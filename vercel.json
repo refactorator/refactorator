@@ -1,0 +1,20 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/anthropic/(.*)",
+      "destination": "https://api.anthropic.com/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/anthropic/(.*)",
+      "headers": [
+        { "key": "anthropic-version", "value": "2023-06-01" }
+      ]
+    }
+  ]
+}
