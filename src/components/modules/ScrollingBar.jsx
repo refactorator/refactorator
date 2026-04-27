@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { products } from '../../data/storeData'
+import { products, getProductImage } from '../../data/storeData'
 
 function applyFilters(items, filter = {}) {
   return items.filter((p) => {
@@ -21,10 +21,21 @@ function applyFilters(items, filter = {}) {
   })
 }
 
+function getBarTitle(filter) {
+  if (filter.lowStock) return 'Low Stock Alert'
+  if (filter.tags?.includes('new') || filter.tag === 'new') return 'New Arrivals'
+  if (filter.tags?.includes('sale') || filter.tag === 'sale') return 'On Sale'
+  if (filter.tags?.includes('top-seller')) return 'Top Sellers'
+  if (filter.tags?.includes('mothers-day')) return "Mother's Day Picks"
+  if (filter.category) return filter.category.charAt(0).toUpperCase() + filter.category.slice(1)
+  return 'Featured'
+}
+
 export default function ScrollingBar({ filter = {} }) {
   const trackRef = useRef(null)
   const filtered = applyFilters(products, filter)
   const items = [...filtered, ...filtered, ...filtered]
+  const title = getBarTitle(filter)
 
   useEffect(() => {
     const track = trackRef.current
@@ -52,27 +63,32 @@ export default function ScrollingBar({ filter = {} }) {
   }
 
   return (
-    <div className="overflow-hidden py-3 px-4">
-      <div ref={trackRef} className="flex gap-3 whitespace-nowrap w-max">
-        {items.map((p, i) => {
-          const totalStock = Object.values(p.stock).reduce((a, b) => a + b, 0)
-          return (
-            <div
-              key={`${p.id}-${i}`}
-              className="inline-flex items-center gap-3 bg-stone-50 border border-zinc-200 rounded-full pl-2 pr-4 py-1.5 hover:border-zinc-400 transition-colors cursor-pointer shrink-0"
-            >
-              <img
-                src={`https://picsum.photos/seed/${p.id}/28/28`}
-                className="w-7 h-7 rounded-full object-cover"
-                alt=""
-              />
-              <span className="text-sm font-medium text-zinc-800">{p.name}</span>
-              <span className="text-xs font-bold text-zinc-500">${p.price}</span>
-              {p.tags.includes('sale') && <span className="badge-sale">Sale</span>}
-              {totalStock <= 5 && <span className="badge-low">Low</span>}
-            </div>
-          )
-        })}
+    <div className="flex items-center gap-0">
+      <div className="shrink-0 px-4 py-3 border-r border-zinc-100">
+        <p className="text-xs font-bold text-zinc-800 uppercase tracking-widest whitespace-nowrap">{title}</p>
+      </div>
+      <div className="flex-1 overflow-hidden py-2 pl-3">
+        <div ref={trackRef} className="flex gap-3 whitespace-nowrap w-max">
+          {items.map((p, i) => {
+            const totalStock = Object.values(p.stock).reduce((a, b) => a + b, 0)
+            return (
+              <div
+                key={`${p.id}-${i}`}
+                className="inline-flex items-center gap-2.5 bg-stone-50 border border-zinc-200 rounded-full pl-1.5 pr-4 py-1 hover:border-zinc-400 transition-colors cursor-pointer shrink-0"
+              >
+                <img
+                  src={getProductImage(p, 28, 28)}
+                  className="w-6 h-6 rounded-full object-cover"
+                  alt=""
+                />
+                <span className="text-xs font-semibold text-zinc-700">{p.name}</span>
+                <span className="text-xs font-bold text-zinc-900">${p.price}</span>
+                {p.tags.includes('sale') && <span className="badge-sale">Sale</span>}
+                {totalStock <= 5 && <span className="badge-low">{totalStock} left</span>}
+              </div>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

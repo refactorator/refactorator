@@ -1,3 +1,19 @@
+const CATEGORY_KEYWORDS = {
+  tops: 'shirt,fashion',
+  pants: 'pants,trousers',
+  dresses: 'dress,fashion',
+  outerwear: 'jacket,coat',
+  accessories: 'handbag,accessories',
+  kids: 'children,clothing',
+  shoes: 'shoes,footwear',
+}
+
+export function getProductImage(product, w = 400, h = 500) {
+  const keyword = CATEGORY_KEYWORDS[product.category] || 'fashion'
+  const lock = parseInt(product.id.replace(/\D/g, ''), 10) || 1
+  return `https://loremflickr.com/${w}/${h}/${keyword}?lock=${lock}`
+}
+
 export const products = [
   // Tops
   {
@@ -11,7 +27,6 @@ export const products = [
     stock: { XS: 4, S: 12, M: 8, L: 6, XL: 2 },
     tags: ['new', 'linen'],
     brand: 'Folio',
-    image: null,
     sku: 'FOL-TOP-001',
   },
   {
@@ -25,7 +40,6 @@ export const products = [
     stock: { XS: 2, S: 9, M: 14, L: 7 },
     tags: ['sale', 'top-seller'],
     brand: 'Folio',
-    image: null,
     sku: 'FOL-TOP-002',
   },
   {
@@ -39,7 +53,6 @@ export const products = [
     stock: { S: 6, M: 11, L: 9, XL: 5, XXL: 1 },
     tags: ['new', 'top-seller'],
     brand: 'Folio',
-    image: null,
     sku: 'FOL-TOP-003',
   },
   {
@@ -53,7 +66,6 @@ export const products = [
     stock: { XS: 0, S: 3, M: 6, L: 8, XL: 4 },
     tags: ['sale'],
     brand: 'Folio',
-    image: null,
     sku: 'FOL-TOP-004',
   },
   // Pants
@@ -68,7 +80,6 @@ export const products = [
     stock: { '00': 3, '0': 5, '2': 7, '4': 9, '6': 6, '8': 4, '10': 2, '12': 1 },
     tags: ['new', 'top-seller'],
     brand: 'Folio',
-    image: null,
     sku: 'FOL-PNT-005',
   },
   {
@@ -82,7 +93,6 @@ export const products = [
     stock: { '28x30': 2, '30x30': 8, '32x30': 10, '32x32': 7, '34x32': 5, '36x32': 3 },
     tags: ['sale'],
     brand: 'Folio',
-    image: null,
     sku: 'FOL-PNT-006',
   },
   {
@@ -96,7 +106,6 @@ export const products = [
     stock: { XS: 4, S: 8, M: 10, L: 5, XL: 2 },
     tags: ['new', 'linen', 'mothers-day'],
     brand: 'Folio',
-    image: null,
     sku: 'FOL-PNT-007',
   },
   {
@@ -110,7 +119,6 @@ export const products = [
     stock: { XS: 5, S: 12, M: 15, L: 9, XL: 6, XXL: 3 },
     tags: ['sale', 'top-seller'],
     brand: 'Folio',
-    image: null,
     sku: 'FOL-PNT-008',
   },
   // Dresses
@@ -125,7 +133,6 @@ export const products = [
     stock: { XS: 3, S: 6, M: 8, L: 5, XL: 1 },
     tags: ['new', 'top-seller', 'mothers-day'],
     brand: 'Folio',
-    image: null,
     sku: 'FOL-DRS-009',
   },
   {
@@ -139,7 +146,6 @@ export const products = [
     stock: { XS: 1, S: 4, M: 7, L: 3 },
     tags: ['sale', 'mothers-day'],
     brand: 'Folio',
-    image: null,
     sku: 'FOL-DRS-010',
   },
   {
@@ -153,7 +159,6 @@ export const products = [
     stock: { XS: 6, S: 9, M: 11, L: 7, XL: 4 },
     tags: ['new'],
     brand: 'Folio',
-    image: null,
     sku: 'FOL-DRS-011',
   },
   // Outerwear
@@ -168,7 +173,6 @@ export const products = [
     stock: { XS: 2, S: 5, M: 7, L: 4, XL: 3, XXL: 1 },
     tags: ['top-seller'],
     brand: 'Folio',
-    image: null,
     sku: 'FOL-OUT-012',
   },
   {
@@ -182,7 +186,6 @@ export const products = [
     stock: { XS: 1, S: 2, M: 3, L: 1 },
     tags: ['sale'],
     brand: 'Folio',
-    image: null,
     sku: 'FOL-OUT-013',
   },
   {
@@ -196,7 +199,6 @@ export const products = [
     stock: { S: 3, M: 8, L: 6, XL: 4, XXL: 2 },
     tags: ['new'],
     brand: 'Folio',
-    image: null,
     sku: 'FOL-OUT-014',
   },
   // Accessories
@@ -211,7 +213,6 @@ export const products = [
     stock: { 'ONE SIZE': 22 },
     tags: ['new', 'top-seller', 'mothers-day'],
     brand: 'Folio',
-    image: null,
     sku: 'FOL-ACC-015',
   },
   {
@@ -225,7 +226,6 @@ export const products = [
     stock: { 'S/M': 7, 'M/L': 11, 'L/XL': 5 },
     tags: ['sale'],
     brand: 'Folio',
-    image: null,
     sku: 'FOL-ACC-016',
   },
   {
@@ -239,7 +239,6 @@ export const products = [
     stock: { 'ONE SIZE': 14 },
     tags: ['top-seller', 'mothers-day'],
     brand: 'Folio',
-    image: null,
     sku: 'FOL-ACC-017',
   },
   // Kids
@@ -254,7 +253,6 @@ export const products = [
     stock: { '2T': 5, '3T': 8, '4T': 9, '5': 7, '6': 6, '7': 4, '8': 3 },
     tags: ['new', 'top-seller'],
     brand: 'Folio Kids',
-    image: null,
     sku: 'FOL-KID-018',
   },
   {
@@ -268,7 +266,6 @@ export const products = [
     stock: { '4': 4, '5': 6, '6': 8, '7': 5, '8': 4, '10': 2, '12': 1 },
     tags: ['sale'],
     brand: 'Folio Kids',
-    image: null,
     sku: 'FOL-KID-019',
   },
   {
@@ -282,7 +279,6 @@ export const products = [
     stock: { '2T': 3, '3T': 5, '4T': 6, '5': 5, '6': 4, '7': 3, '8': 2 },
     tags: ['new'],
     brand: 'Folio Kids',
-    image: null,
     sku: 'FOL-KID-020',
   },
   {
@@ -296,7 +292,6 @@ export const products = [
     stock: { '4': 2, '5': 4, '6': 5, '7': 4, '8': 3, '10': 1, '12': 0 },
     tags: ['sale', 'low-stock'],
     brand: 'Folio Kids',
-    image: null,
     sku: 'FOL-KID-021',
   },
   {
@@ -310,8 +305,60 @@ export const products = [
     stock: { XS: 2, S: 4, M: 5, L: 3, XL: 1 },
     tags: ['new', 'top-seller', 'mothers-day'],
     brand: 'Folio',
-    image: null,
     sku: 'FOL-TOP-022',
+  },
+  // Shoes
+  {
+    id: 'p023',
+    name: 'Cortland Low Sneaker',
+    category: 'shoes',
+    gender: 'unisex',
+    price: 125,
+    originalPrice: null,
+    sizes: ['6', '7', '8', '9', '10', '11', '12'],
+    stock: { '6': 4, '7': 8, '8': 10, '9': 9, '10': 7, '11': 5, '12': 3 },
+    tags: ['new', 'top-seller'],
+    brand: 'Folio',
+    sku: 'FOL-SHO-023',
+  },
+  {
+    id: 'p024',
+    name: 'Pemberton Leather Oxford',
+    category: 'shoes',
+    gender: 'men',
+    price: 185,
+    originalPrice: null,
+    sizes: ['8', '9', '10', '11', '12'],
+    stock: { '8': 3, '9': 5, '10': 6, '11': 4, '12': 2 },
+    tags: ['top-seller'],
+    brand: 'Folio',
+    sku: 'FOL-SHO-024',
+  },
+  {
+    id: 'p025',
+    name: 'Harlow Block Heel Mule',
+    category: 'shoes',
+    gender: 'women',
+    price: 145,
+    originalPrice: 175,
+    sizes: ['6', '7', '8', '9', '10'],
+    stock: { '6': 2, '7': 4, '8': 5, '9': 3, '10': 1 },
+    tags: ['sale', 'mothers-day'],
+    brand: 'Folio',
+    sku: 'FOL-SHO-025',
+  },
+  {
+    id: 'p026',
+    name: 'Ashton Canvas Slip-On',
+    category: 'shoes',
+    gender: 'unisex',
+    price: 88,
+    originalPrice: 110,
+    sizes: ['6', '7', '8', '9', '10', '11', '12'],
+    stock: { '6': 5, '7': 7, '8': 9, '9': 8, '10': 6, '11': 4, '12': 2 },
+    tags: ['sale'],
+    brand: 'Folio',
+    sku: 'FOL-SHO-026',
   },
 ]
 

@@ -11,6 +11,7 @@ const SYSTEM_PROMPT = `You are the UI personalization engine for Folio, a mid-ra
 - **InventoryTable**: Internal inventory table with SKU, stock levels, and alerts. For store associates.
 - **LoyaltyWidget**: Shows loyalty points balance, tier, and recent purchases.
 - **SwipeCard**: Tinder-style swipe interface — one product card at a time, swipe right to add to cart, swipe left to skip. Great for browsing filtered selections interactively.
+- **OutfitBuilder**: Three-row outfit mixer — tops/shirts row, pants/bottoms row, shoes row. Each row shows one item at a time with left/right arrows. "Add Outfit to Cart" button saves the current combination. Use when someone wants to build an outfit, mix and match, or browse items by category in a fashion-forward layout.
 
 ## Layout Positions
 - **top**: Full-width bar at the top (scrolling ticker, announcements) — compact height
@@ -97,11 +98,24 @@ export default function ChatPanel({ onLayoutChange, externalMessages = [] }) {
       const raw = response.content[0]?.text || ''
       let parsed
       try {
-        parsed = JSON.parse(raw)
+        // Strip markdown code fences and leading/trailing whitespace
+        const cleaned = raw
+          .replace(/^```(?:json)?\s*/im, '')
+          .replace(/```\s*$/im, '')
+          .trim()
+        parsed = JSON.parse(cleaned)
       } catch {
+        // Fall back to extracting the first JSON object in the response
         const match = raw.match(/\{[\s\S]*\}/)
-        if (match) parsed = JSON.parse(match[0])
-        else throw new Error('Unexpected response format')
+        if (match) {
+          try {
+            parsed = JSON.parse(match[0])
+          } catch {
+            throw new Error('Could not parse layout from response')
+          }
+        } else {
+          throw new Error('No layout data returned')
+        }
       }
 
       if (parsed.layout) onLayoutChange(parsed.layout)

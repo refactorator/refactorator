@@ -1,4 +1,4 @@
-import { products } from '../../data/storeData'
+import { products, getProductImage } from '../../data/storeData'
 
 function applyFilters(items, filter = {}) {
   return items.filter((p) => {
@@ -16,6 +16,7 @@ function applyFilters(items, filter = {}) {
 
 export default function TopSellers({ filter = {} }) {
   const filtered = applyFilters(products, filter)
+  const title = filter.tag === 'mothers-day' ? "Mother's Day — Top Sellers" : 'Top Sellers'
 
   if (filtered.length === 0) {
     return (
@@ -26,25 +27,22 @@ export default function TopSellers({ filter = {} }) {
   }
 
   return (
-    <div className="p-4">
-      <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-3">
-        Top Sellers{filter.tag === 'mothers-day' ? " — Mother's Day" : ''}
-      </p>
-      <div className="space-y-2">
+    <div>
+      <div className="px-5 pt-5 pb-3 border-b border-zinc-100">
+        <h2 className="text-lg font-bold text-zinc-900 tracking-tight">{title}</h2>
+        <p className="text-xs text-zinc-400 mt-0.5">{filtered.length} items</p>
+      </div>
+      <div className="p-4 space-y-1">
         {filtered.map((p, i) => {
           const totalStock = Object.values(p.stock).reduce((a, b) => a + b, 0)
-          const imgUrl = `https://picsum.photos/seed/${p.id}/80/100`
-
           return (
             <div
               key={p.id}
-              className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-stone-50 transition-colors cursor-pointer"
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-stone-50 transition-colors cursor-pointer"
             >
-              <span className="text-xs font-bold text-zinc-300 w-4 shrink-0 text-right">
-                {i + 1}
-              </span>
+              <span className="text-xs font-bold text-zinc-300 w-5 shrink-0 text-right">#{i + 1}</span>
               <img
-                src={imgUrl}
+                src={getProductImage(p, 80, 100)}
                 alt={p.name}
                 className="w-10 h-12 rounded-lg object-cover shrink-0"
               />
@@ -58,9 +56,7 @@ export default function TopSellers({ filter = {} }) {
                   <p className="text-xs text-zinc-400 line-through">${p.originalPrice}</p>
                 )}
               </div>
-              {totalStock <= 5 && (
-                <span className="badge-low shrink-0">Low</span>
-              )}
+              {totalStock <= 5 && <span className="badge-low shrink-0">Low</span>}
             </div>
           )
         })}

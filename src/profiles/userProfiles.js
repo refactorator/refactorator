@@ -3,6 +3,7 @@ export const userProfiles = [
     id: 'bargain-hunter',
     name: 'Bargain Hunter',
     description: 'Focused on deals, sales, and best prices',
+    prompt: 'Show all active coupon codes on top, sale items in the center grid, and new arrivals scrolling at the bottom',
     defaultLayout: [
       { position: 'top', module: 'CouponBar', filter: {} },
       { position: 'center', module: 'ProductGrid', filter: { tags: ['sale'] } },
@@ -13,6 +14,7 @@ export const userProfiles = [
     id: 'gift-buyer',
     name: 'Gift Buyer',
     description: "Shopping for others — gifts, occasions, and top picks",
+    prompt: "Show Mother's Day products in a scrolling ticker on top, top sellers in the center, and the MOMDAY30 coupon on the right",
     defaultLayout: [
       { position: 'top', module: 'ScrollingBar', filter: { tags: ['mothers-day'] } },
       { position: 'center', module: 'TopSellers', filter: {} },
@@ -23,6 +25,7 @@ export const userProfiles = [
     id: 'brand-loyalist',
     name: 'Brand Loyalist',
     description: 'Follows favorite brands, loves early access and loyalty perks',
+    prompt: 'Show my loyalty points and tier on the left, new Folio arrivals in the center, and top sellers scrolling at the bottom',
     defaultLayout: [
       { position: 'left', module: 'LoyaltyWidget', filter: {} },
       { position: 'center', module: 'ProductGrid', filter: { tags: ['new'], brand: 'Folio' } },
@@ -33,6 +36,7 @@ export const userProfiles = [
     id: 'busy-parent',
     name: 'Busy Parent',
     description: 'Practical, fast, focused on kids and family needs',
+    prompt: "Show kids items scrolling at top, the KIDS20 coupon on the left, and all kids products in the center",
     defaultLayout: [
       { position: 'top', module: 'ScrollingBar', filter: { category: 'kids' } },
       { position: 'left', module: 'CouponBar', filter: { code: 'KIDS20' } },
@@ -43,6 +47,7 @@ export const userProfiles = [
     id: 'store-associate',
     name: 'Store Associate',
     description: 'Internal view — inventory, stock levels, and product lookup',
+    prompt: 'Show low-stock alerts in a scrolling ticker at the top and the full inventory table with stock levels in the center',
     defaultLayout: [
       { position: 'top', module: 'ScrollingBar', filter: { lowStock: true } },
       { position: 'center', module: 'InventoryTable', filter: {} },
