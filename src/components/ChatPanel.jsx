@@ -10,12 +10,13 @@ const SYSTEM_PROMPT = `You are the UI personalization engine for Folio, a mid-ra
 - **TopSellers**: A ranked list of top-selling items. Supports filters.
 - **InventoryTable**: Internal inventory table with SKU, stock levels, and alerts. For store associates.
 - **LoyaltyWidget**: Shows loyalty points balance, tier, and recent purchases.
+- **SwipeCard**: Tinder-style swipe interface — one product card at a time, swipe right to add to cart, swipe left to skip. Great for browsing filtered selections interactively.
 
 ## Layout Positions
-- **top**: Full-width bar at the top (scrolling ticker, announcements, coupons) — max height ~120px
-- **bottom**: Full-width bar at the bottom (similar to top)
+- **top**: Full-width bar at the top (scrolling ticker, announcements) — compact height
+- **bottom**: Full-width bar at the bottom
 - **left**: Left sidebar (~288px wide) — good for coupons, loyalty, filters
-- **center**: Main content area — good for product grids, top sellers, inventory table
+- **center**: Main content area — good for grids, tables, swipe cards
 - **right**: Right sidebar (~288px wide) — good for recommendations, top sellers, loyalty
 
 ## Product Filter Options
@@ -32,25 +33,21 @@ Filters go inside the "filter" object:
 ## Available Coupons
 SPRING25 (25% off spring), SAVE15 ($15 off $100+), KIDS20 (20% off kids), MEMBER10 (10% loyalty exclusive), FREESHIP (free shipping), MOMDAY30 (30% off women's Mother's Day)
 
-## Available Product Categories
-tops, pants, dresses, outerwear, accessories, kids
-
 ## Response Format
 You MUST return a valid JSON object with exactly this structure:
 {
   "layout": [
     { "position": "top|bottom|left|center|right", "module": "ModuleName", "filter": {} }
   ],
-  "message": "A friendly, conversational message to show the user describing what you've set up for them."
+  "message": "A friendly, helpful message describing what you set up."
 }
 
 Rules:
-- Return ONLY valid JSON — no markdown fences, no extra text
+- Return ONLY valid JSON — no markdown, no extra text outside the JSON object
 - You can include 1-5 layout items
-- Each layout position can only appear once (except you can have both top and bottom)
-- "message" should be 1-2 sentences, warm and helpful
-- If the request is ambiguous, make a reasonable interpretation and explain it in "message"
-- Never invent module names not listed above`
+- "message" should be 1-2 sentences, warm and direct
+- If a user asks for a swipe/dating-app/Tinder-style interface, use SwipeCard in the center position
+- Never invent module names not in the list above`
 
 export default function ChatPanel({ onLayoutChange, externalMessages = [] }) {
   const [internalMessages, setInternalMessages] = useState([])
@@ -60,17 +57,13 @@ export default function ChatPanel({ onLayoutChange, externalMessages = [] }) {
   const textareaRef = useRef(null)
   const prevExternalRef = useRef([])
 
-  // Merge new external messages (e.g. profile switches) into the chat
   useEffect(() => {
-    const prev = prevExternalRef.current
-    const newOnes = externalMessages.slice(prev.length)
+    const newOnes = externalMessages.slice(prevExternalRef.current.length)
     if (newOnes.length > 0) {
       setInternalMessages((m) => [...m, ...newOnes])
       prevExternalRef.current = externalMessages
     }
   }, [externalMessages])
-
-  const messages = internalMessages
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -88,17 +81,12 @@ export default function ChatPanel({ onLayoutChange, externalMessages = [] }) {
 
     try {
       const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY
-      if (!apiKey) {
-        throw new Error('VITE_ANTHROPIC_API_KEY is not set in .env')
-      }
+      if (!apiKey) throw new Error('VITE_ANTHROPIC_API_KEY is not set in .env')
 
-      const client = new Anthropic({
-        apiKey,
-        dangerouslyAllowBrowser: true,
-      })
+      const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true })
 
       const response = await client.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 1024,
         system: SYSTEM_PROMPT,
         messages: newMessages
@@ -113,24 +101,20 @@ export default function ChatPanel({ onLayoutChange, externalMessages = [] }) {
       } catch {
         const match = raw.match(/\{[\s\S]*\}/)
         if (match) parsed = JSON.parse(match[0])
-        else throw new Error('Claude returned non-JSON response')
+        else throw new Error('Unexpected response format')
       }
 
       if (parsed.layout) onLayoutChange(parsed.layout)
 
-      const assistantMsg = {
-        role: 'assistant',
-        content: parsed.message || 'Layout updated.',
-        id: Date.now() + 1,
-      }
-      setInternalMessages((prev) => [...prev, assistantMsg])
+      setInternalMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: parsed.message || 'Layout updated.', id: Date.now() + 1 },
+      ])
     } catch (err) {
-      const errorMsg = {
-        role: 'error',
-        content: `Error: ${err.message}`,
-        id: Date.now() + 1,
-      }
-      setInternalMessages((prev) => [...prev, errorMsg])
+      setInternalMessages((prev) => [
+        ...prev,
+        { role: 'error', content: `${err.message}`, id: Date.now() + 1 },
+      ])
     } finally {
       setIsLoading(false)
     }
@@ -150,35 +134,37 @@ export default function ChatPanel({ onLayoutChange, externalMessages = [] }) {
     el.style.height = Math.min(el.scrollHeight, 120) + 'px'
   }
 
+  const messages = internalMessages
+
   return (
     <div className="panel flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-500" />
-          <span className="text-sm font-semibold text-zinc-200">Folio AI</span>
+          <div className="w-2 h-2 rounded-full bg-green-500" />
+          <span className="text-sm font-semibold text-zinc-800">Folio Assistant</span>
         </div>
-        <span className="text-xs text-zinc-500">Personalize your view</span>
+        <span className="text-xs text-zinc-400">Personalize your view</span>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.length === 0 && (
-          <div className="text-center py-8 space-y-3">
-            <div className="text-3xl">✦</div>
-            <p className="text-sm text-zinc-400 leading-relaxed">
-              Describe the interface you want in plain language.
+          <div className="py-6 space-y-4">
+            <p className="text-sm text-zinc-500 leading-relaxed text-center">
+              Describe the layout you want in plain language.
             </p>
-            <div className="space-y-2 mt-4">
+            <div className="space-y-2">
               {[
-                'Show me all pants in size small with coupons on the left',
-                "Top sellers for Mother's Day on the right, new arrivals in the center",
-                'Give me the store associate inventory view',
+                'Show me all pants on sale with coupons on the left',
+                "Top sellers for Mother's Day and active offers",
+                'Swipe through all sale items like Tinder',
+                'Store associate inventory view',
               ].map((ex) => (
                 <button
                   key={ex}
                   onClick={() => { setInput(ex); textareaRef.current?.focus() }}
-                  className="block w-full text-left text-xs text-zinc-500 bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 hover:border-zinc-600 hover:text-zinc-300 transition-colors"
+                  className="block w-full text-left text-xs text-zinc-500 bg-stone-50 border border-zinc-200 rounded-xl px-3 py-2.5 hover:border-zinc-300 hover:text-zinc-700 transition-colors"
                 >
                   "{ex}"
                 </button>
@@ -190,19 +176,19 @@ export default function ChatPanel({ onLayoutChange, externalMessages = [] }) {
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.role === 'error' ? (
-              <div className="max-w-[85%] bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-lg px-3 py-2">
+              <div className="max-w-[85%] bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl px-3 py-2">
                 {msg.content}
               </div>
             ) : msg.role === 'system' ? (
-              <div className="w-full bg-zinc-800/50 border border-zinc-700/30 text-zinc-400 text-xs rounded-lg px-3 py-2 italic text-center">
+              <div className="w-full bg-stone-50 border border-zinc-100 text-zinc-400 text-xs rounded-xl px-3 py-2 italic text-center">
                 {msg.content}
               </div>
             ) : msg.role === 'user' ? (
-              <div className="max-w-[85%] bg-white text-zinc-900 text-sm rounded-2xl rounded-tr-sm px-4 py-2.5 font-medium">
+              <div className="max-w-[85%] bg-zinc-900 text-white text-sm rounded-2xl rounded-tr-sm px-4 py-2.5 font-medium">
                 {msg.content}
               </div>
             ) : (
-              <div className="max-w-[85%] bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm rounded-2xl rounded-tl-sm px-4 py-2.5">
+              <div className="max-w-[85%] bg-stone-50 border border-zinc-200 text-zinc-700 text-sm rounded-2xl rounded-tl-sm px-4 py-2.5">
                 {msg.content}
               </div>
             )}
@@ -211,11 +197,11 @@ export default function ChatPanel({ onLayoutChange, externalMessages = [] }) {
 
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-zinc-800 border border-zinc-700 rounded-2xl rounded-tl-sm px-4 py-3">
+            <div className="bg-stone-50 border border-zinc-200 rounded-2xl rounded-tl-sm px-4 py-3">
               <div className="flex gap-1.5 items-center">
-                <div className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             </div>
           </div>
@@ -225,8 +211,8 @@ export default function ChatPanel({ onLayoutChange, externalMessages = [] }) {
       </div>
 
       {/* Input */}
-      <div className="px-4 py-3 border-t border-zinc-800 shrink-0">
-        <div className="flex items-end gap-2 bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 focus-within:border-zinc-500 transition-colors">
+      <div className="px-4 py-3 border-t border-zinc-100 shrink-0">
+        <div className="flex items-end gap-2 bg-stone-50 border border-zinc-200 rounded-xl px-4 py-2.5 focus-within:border-zinc-400 transition-colors">
           <textarea
             ref={textareaRef}
             value={input}
@@ -234,21 +220,21 @@ export default function ChatPanel({ onLayoutChange, externalMessages = [] }) {
             onKeyDown={handleKeyDown}
             placeholder="Describe the layout you want..."
             rows={1}
-            className="flex-1 bg-transparent text-zinc-200 text-sm placeholder-zinc-500 resize-none focus:outline-none leading-relaxed"
+            className="flex-1 bg-transparent text-zinc-800 text-sm placeholder-zinc-400 resize-none focus:outline-none leading-relaxed"
             style={{ minHeight: '24px', maxHeight: '120px' }}
           />
           <button
             onClick={sendMessage}
             disabled={!input.trim() || isLoading}
-            className="shrink-0 w-8 h-8 rounded-lg bg-white text-zinc-900 flex items-center justify-center hover:bg-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            className="shrink-0 w-8 h-8 rounded-lg bg-zinc-900 text-white flex items-center justify-center hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="22" y1="2" x2="11" y2="13" />
               <polygon points="22 2 15 22 11 13 2 9 22 2" />
             </svg>
           </button>
         </div>
-        <p className="text-xs text-zinc-600 mt-1.5 text-center">↵ to send · shift+↵ for new line</p>
+        <p className="text-xs text-zinc-400 mt-1.5 text-center">↵ send · shift+↵ new line</p>
       </div>
     </div>
   )

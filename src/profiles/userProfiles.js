@@ -2,7 +2,6 @@ export const userProfiles = [
   {
     id: 'bargain-hunter',
     name: 'Bargain Hunter',
-    emoji: '🏷️',
     description: 'Focused on deals, sales, and best prices',
     defaultLayout: [
       { position: 'top', module: 'CouponBar', filter: {} },
@@ -13,21 +12,19 @@ export const userProfiles = [
   {
     id: 'gift-buyer',
     name: 'Gift Buyer',
-    emoji: '🎁',
     description: "Shopping for others — gifts, occasions, and top picks",
     defaultLayout: [
       { position: 'top', module: 'ScrollingBar', filter: { tags: ['mothers-day'] } },
       { position: 'center', module: 'TopSellers', filter: {} },
-      { position: 'bottom', module: 'CouponBar', filter: { code: 'MOMDAY30' } },
+      { position: 'right', module: 'CouponBar', filter: { code: 'MOMDAY30' } },
     ],
   },
   {
     id: 'brand-loyalist',
     name: 'Brand Loyalist',
-    emoji: '⭐',
     description: 'Follows favorite brands, loves early access and loyalty perks',
     defaultLayout: [
-      { position: 'top', module: 'LoyaltyWidget', filter: {} },
+      { position: 'left', module: 'LoyaltyWidget', filter: {} },
       { position: 'center', module: 'ProductGrid', filter: { tags: ['new'], brand: 'Folio' } },
       { position: 'bottom', module: 'ScrollingBar', filter: { tags: ['top-seller'] } },
     ],
@@ -35,7 +32,6 @@ export const userProfiles = [
   {
     id: 'busy-parent',
     name: 'Busy Parent',
-    emoji: '👪',
     description: 'Practical, fast, focused on kids and family needs',
     defaultLayout: [
       { position: 'top', module: 'ScrollingBar', filter: { category: 'kids' } },
@@ -46,7 +42,6 @@ export const userProfiles = [
   {
     id: 'store-associate',
     name: 'Store Associate',
-    emoji: '🏪',
     description: 'Internal view — inventory, stock levels, and product lookup',
     defaultLayout: [
       { position: 'top', module: 'ScrollingBar', filter: { lowStock: true } },

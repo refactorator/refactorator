@@ -19,7 +19,7 @@ export default function TopSellers({ filter = {} }) {
 
   if (filtered.length === 0) {
     return (
-      <div className="flex items-center justify-center h-32 text-zinc-500 text-sm">
+      <div className="flex items-center justify-center h-32 text-zinc-400 text-sm">
         No top sellers match this filter
       </div>
     )
@@ -27,36 +27,35 @@ export default function TopSellers({ filter = {} }) {
 
   return (
     <div className="p-4">
-      <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
-        Top Sellers {filter.tag === 'mothers-day' ? "· Mother's Day" : ''}
+      <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-3">
+        Top Sellers{filter.tag === 'mothers-day' ? " — Mother's Day" : ''}
       </p>
       <div className="space-y-2">
         {filtered.map((p, i) => {
           const totalStock = Object.values(p.stock).reduce((a, b) => a + b, 0)
-          const hasSale = p.tags.includes('sale')
+          const imgUrl = `https://picsum.photos/seed/${p.id}/80/100`
 
           return (
             <div
               key={p.id}
-              className="flex items-center gap-3 bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-4 py-3 hover:border-zinc-600 hover:bg-zinc-800 transition-all cursor-pointer"
+              className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-stone-50 transition-colors cursor-pointer"
             >
-              <span className="text-xs font-bold text-zinc-600 w-5 shrink-0">#{i + 1}</span>
-              <div className="w-8 h-8 bg-zinc-700/40 rounded flex items-center justify-center text-base shrink-0">
-                {p.category === 'tops' && '👕'}
-                {p.category === 'pants' && '👖'}
-                {p.category === 'dresses' && '👗'}
-                {p.category === 'outerwear' && '🧥'}
-                {p.category === 'accessories' && '👜'}
-                {p.category === 'kids' && '🧒'}
-              </div>
+              <span className="text-xs font-bold text-zinc-300 w-4 shrink-0 text-right">
+                {i + 1}
+              </span>
+              <img
+                src={imgUrl}
+                alt={p.name}
+                className="w-10 h-12 rounded-lg object-cover shrink-0"
+              />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-zinc-200 truncate">{p.name}</p>
-                <p className="text-xs text-zinc-500 capitalize">{p.category}</p>
+                <p className="text-sm font-semibold text-zinc-900 truncate">{p.name}</p>
+                <p className="text-xs text-zinc-400 capitalize mt-0.5">{p.category}</p>
               </div>
               <div className="text-right shrink-0">
-                <p className="text-sm font-semibold text-white">${p.price}</p>
-                {hasSale && p.originalPrice && (
-                  <p className="text-xs text-zinc-500 line-through">${p.originalPrice}</p>
+                <p className="text-sm font-bold text-zinc-900">${p.price}</p>
+                {p.tags.includes('sale') && p.originalPrice && (
+                  <p className="text-xs text-zinc-400 line-through">${p.originalPrice}</p>
                 )}
               </div>
               {totalStock <= 5 && (
