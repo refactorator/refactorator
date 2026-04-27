@@ -6,8 +6,6 @@ import TopSellers from './modules/TopSellers'
 import InventoryTable from './modules/InventoryTable'
 import LoyaltyWidget from './modules/LoyaltyWidget'
 import SwipeCard from './modules/SwipeCard'
-import OutfitBuilder from './modules/OutfitBuilder'
-
 const MODULE_MAP = {
   ProductGrid,
   CouponBar,
@@ -16,7 +14,6 @@ const MODULE_MAP = {
   InventoryTable,
   LoyaltyWidget,
   SwipeCard,
-  OutfitBuilder,
 }
 
 const ALL_POSITIONS = ['top', 'left', 'center', 'right', 'bottom']
@@ -30,7 +27,6 @@ function getModuleLabel(module, filter = {}) {
     InventoryTable: 'Inventory',
     LoyaltyWidget: 'Loyalty',
     SwipeCard: 'Swipe to Shop',
-    OutfitBuilder: 'Outfit Builder',
   }
   return labels[module] || module
 }

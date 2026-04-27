@@ -11,7 +11,6 @@ const SYSTEM_PROMPT = `You are the UI personalization engine for Folio, a mid-ra
 - **InventoryTable**: Internal inventory table with SKU, stock levels, and alerts. For store associates.
 - **LoyaltyWidget**: Shows loyalty points balance, tier, and recent purchases.
 - **SwipeCard**: Tinder-style swipe interface — one product card at a time, swipe right to add to cart, swipe left to skip. Great for browsing filtered selections interactively.
-- **OutfitBuilder**: Three-row outfit mixer — tops/shirts row, pants/bottoms row, shoes row. Each row shows one item at a time with left/right arrows. "Add Outfit to Cart" button saves the current combination. Use when someone wants to build an outfit, mix and match, or browse items by category in a fashion-forward layout.
 
 ## Layout Positions
 - **top**: Full-width bar at the top (scrolling ticker, announcements) — compact height
