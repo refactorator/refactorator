@@ -6,7 +6,8 @@ export default async function handler(req, res) {
   if (!domain) return res.status(400).json({ error: 'Missing domain parameter' })
 
   const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '')
-  const url = `https://${cleanDomain}/products.json?limit=250`
+  const page = req.query.page || 1
+  const url = `https://${cleanDomain}/products.json?limit=250&page=${page}`
 
   let upstream
   try {

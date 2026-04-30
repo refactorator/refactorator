@@ -18,8 +18,9 @@ export default defineConfig({
             return
           }
           const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '')
+          const page = params.get('page') || 1
           https.get(
-            { hostname: cleanDomain, path: '/products.json?limit=250', headers: { 'User-Agent': 'Mozilla/5.0' } },
+            { hostname: cleanDomain, path: `/products.json?limit=250&page=${page}`, headers: { 'User-Agent': 'Mozilla/5.0' } },
             (upstream) => {
               res.statusCode = upstream.statusCode
               res.setHeader('Content-Type', 'application/json')

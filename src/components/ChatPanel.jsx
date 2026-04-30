@@ -181,10 +181,12 @@ export default function ChatPanel({ onLayoutChange, externalMessages = [] }) {
             </p>
             <div className="space-y-2">
               {[
-                'Show me all pants on sale with coupons on the left',
-                "Top sellers for Mother's Day and active offers",
-                'Swipe through all sale items like Tinder',
+                'Show me all tops for women with coupons on the left',
+                'Top sellers on the right, sale items in the center',
+                'Swipe through everything like Tinder',
                 'Store associate inventory view',
+                'Show outerwear and accessories side by side',
+                'Give me a loyalty + new arrivals layout',
               ].map((ex) => (
                 <button
                   key={ex}

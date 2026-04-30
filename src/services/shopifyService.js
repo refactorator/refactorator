@@ -1,31 +1,50 @@
+const MAX_PAGES = 4 // up to 1000 products
+
 export async function fetchShopifyStore(domain) {
   const cleanDomain = domain
     .replace(/^https?:\/\//, '')
     .replace(/\/$/, '')
 
-  const url = `/api/shopify?domain=${encodeURIComponent(cleanDomain)}`
-
-  let res
-  try {
-    res = await fetch(url)
-  } catch {
-    throw new Error(`Could not reach ${cleanDomain}. Check the domain and try again.`)
+  const fetchPage = async (page) => {
+    const url = `/api/shopify?domain=${encodeURIComponent(cleanDomain)}&page=${page}`
+    let res
+    try {
+      res = await fetch(url)
+    } catch {
+      throw new Error(`Could not reach ${cleanDomain}. Check the domain and try again.`)
+    }
+    if (res.status === 401 || res.status === 403) {
+      throw new Error('This store is password-protected and cannot be accessed publicly.')
+    }
+    if (!res.ok) {
+      throw new Error(`Store returned an error (${res.status}). Make sure this is a valid Shopify store URL.`)
+    }
+    const json = await res.json()
+    if (!json.products) {
+      throw new Error('Not a Shopify store, or the store has no public products.')
+    }
+    return json.products
   }
 
-  if (res.status === 401 || res.status === 403) {
-    throw new Error('This store is password-protected and cannot be accessed publicly.')
-  }
-  if (!res.ok) {
-    throw new Error(`Store returned an error (${res.status}). Make sure this is a valid Shopify store URL.`)
-  }
-
-  const json = await res.json()
-  if (!json.products) {
+  const firstPage = await fetchPage(1)
+  if (firstPage.length === 0) {
     throw new Error('Not a Shopify store, or the store has no public products.')
   }
 
-  const storeName = deriveStoreName(cleanDomain, json.products)
-  return mapProducts(json.products, storeName)
+  let allProducts = [...firstPage]
+
+  if (firstPage.length === 250) {
+    const remaining = await Promise.all(
+      Array.from({ length: MAX_PAGES - 1 }, (_, i) => fetchPage(i + 2))
+    )
+    for (const page of remaining) {
+      allProducts = [...allProducts, ...page]
+      if (page.length < 250) break
+    }
+  }
+
+  const storeName = deriveStoreName(cleanDomain, allProducts)
+  return mapProducts(allProducts, storeName)
 }
 
 function deriveStoreName(domain, products) {
