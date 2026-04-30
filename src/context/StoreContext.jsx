@@ -23,7 +23,7 @@ export function StoreProvider({ children }) {
     try {
       const data = await fetchShopifyStore(domain)
       setState({ ...data, isDemo: false, isLoading: false, error: null })
-      return { success: true, storeName: data.storeName }
+      return { success: true, storeName: data.storeName, productCount: data.products.length }
     } catch (err) {
       setState((s) => ({ ...s, isLoading: false, error: err.message }))
       return { success: false, error: err.message }

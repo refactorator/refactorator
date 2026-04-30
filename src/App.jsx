@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import ChatPanel from './components/ChatPanel'
 import StorefrontPanel from './components/StorefrontPanel'
 import ProfileSelector from './components/ProfileSelector'
@@ -16,6 +16,13 @@ export default function App() {
   const [layout, setLayout] = useState(DEFAULT_LAYOUT)
   const [activeProfile, setActiveProfile] = useState(null)
   const [chatMessages, setChatMessages] = useState([])
+  const [toast, setToast] = useState(null)
+
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 3500)
+    return () => clearTimeout(t)
+  }, [toast])
 
   const handleLayoutChange = useCallback((newLayout) => {
     setLayout(newLayout)
@@ -36,6 +43,11 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-stone-50 font-sans">
+      {toast && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-zinc-900 text-white text-xs font-semibold px-5 py-3 rounded-2xl shadow-xl animate-fade-in">
+          ✓ {toast}
+        </div>
+      )}
       {/* Header */}
       <header className="bg-white border-b border-zinc-200 px-6 shrink-0">
         <div className="max-w-screen-2xl mx-auto flex items-center justify-between h-14 gap-6">
@@ -54,7 +66,9 @@ export default function App() {
             <ProfileSelector activeProfile={activeProfile} onSelect={handleProfileSelect} />
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <StoreConnector />
+            <StoreConnector onConnect={({ storeName, productCount }) =>
+              setToast(`Connected to ${storeName} — ${productCount} products loaded`)
+            } />
             <span className="text-xs text-zinc-400 hidden sm:block">Bag (0)</span>
             <div className="w-7 h-7 rounded-full bg-zinc-900 flex items-center justify-center text-xs text-white font-semibold">J</div>
           </div>

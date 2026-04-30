@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../context/StoreContext'
 
-export default function StoreConnector() {
+export default function StoreConnector({ onConnect }) {
   const { storeName, isDemo, isLoading, error, connectShopifyStore, disconnect } = useStore()
   const [isOpen, setIsOpen] = useState(false)
   const [domain, setDomain] = useState('')
@@ -17,6 +17,7 @@ export default function StoreConnector() {
     if (result.success) {
       setIsOpen(false)
       setDomain('')
+      onConnect?.({ storeName: result.storeName, productCount: result.productCount })
     }
   }
 
