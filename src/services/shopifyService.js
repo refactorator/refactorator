@@ -26,21 +26,18 @@ export async function fetchShopifyStore(domain) {
     return json.products
   }
 
-  const firstPage = await fetchPage(1)
-  if (firstPage.length === 0) {
-    throw new Error('Not a Shopify store, or the store has no public products.')
+  const pages = await Promise.all(
+    Array.from({ length: MAX_PAGES }, (_, i) => fetchPage(i + 1))
+  )
+
+  let allProducts = []
+  for (const page of pages) {
+    allProducts = [...allProducts, ...page]
+    if (page.length < 250) break
   }
 
-  let allProducts = [...firstPage]
-
-  if (firstPage.length === 250) {
-    const remaining = await Promise.all(
-      Array.from({ length: MAX_PAGES - 1 }, (_, i) => fetchPage(i + 2))
-    )
-    for (const page of remaining) {
-      allProducts = [...allProducts, ...page]
-      if (page.length < 250) break
-    }
+  if (allProducts.length === 0) {
+    throw new Error('Not a Shopify store, or the store has no public products.')
   }
 
   const storeName = deriveStoreName(cleanDomain, allProducts)
