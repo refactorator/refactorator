@@ -1,7 +1,16 @@
 import { useState, useRef, useEffect } from 'react'
 import Anthropic from '@anthropic-ai/sdk'
+import { useStore } from '../context/StoreContext'
 
-const SYSTEM_PROMPT = `You are the UI personalization engine for Folio, a mid-range fashion retailer. Your job is to interpret natural language requests and return structured JSON describing how to render the storefront interface.
+function buildSystemPrompt(storeName, products, coupons) {
+  const categories = [...new Set(products.map((p) => p.category))].filter(Boolean)
+  const tags = [...new Set(products.flatMap((p) => p.tags))].filter(Boolean)
+  const activeCoupons = coupons.filter((c) => c.active)
+  const couponText = activeCoupons.length
+    ? activeCoupons.map((c) => `${c.code} (${c.discount})`).join(', ')
+    : 'No active coupons available for this store'
+
+  return `You are the UI personalization engine for ${storeName}. Your job is to interpret natural language requests and return structured JSON describing how to render the storefront interface.
 
 ## Available Modules
 - **ProductGrid**: A grid of product cards. Supports filters.
@@ -10,7 +19,7 @@ const SYSTEM_PROMPT = `You are the UI personalization engine for Folio, a mid-ra
 - **TopSellers**: A ranked list of top-selling items. Supports filters.
 - **InventoryTable**: Internal inventory table with SKU, stock levels, and alerts. For store associates.
 - **LoyaltyWidget**: Shows loyalty points balance, tier, and recent purchases.
-- **SwipeCard**: Tinder-style swipe interface — one product card at a time, swipe right to add to cart, swipe left to skip. Great for browsing filtered selections interactively.
+- **SwipeCard**: Tinder-style swipe interface — one product card at a time, swipe right to add to cart, swipe left to skip.
 
 ## Layout Positions
 - **top**: Full-width bar at the top (scrolling ticker, announcements) — compact height
@@ -21,17 +30,17 @@ const SYSTEM_PROMPT = `You are the UI personalization engine for Folio, a mid-ra
 
 ## Product Filter Options
 Filters go inside the "filter" object:
-- category: "tops" | "pants" | "dresses" | "outerwear" | "accessories" | "kids"
+- category: ${categories.map((c) => `"${c}"`).join(' | ') || '"tops" | "pants" | "dresses"'}
 - gender: "women" | "men" | "unisex" | "kids"
-- tags: array of ["sale", "new", "top-seller", "mothers-day", "linen"]
+- tags: array from [${tags.map((t) => `"${t}"`).join(', ') || '"sale", "new", "top-seller"'}]
 - tag: single tag string
-- brand: "Folio" | "Folio Kids"
-- size: a size string like "S", "M", "4", "2T" etc.
+- brand: filter by brand name
+- size: a size string like "S", "M", "L" etc.
 - lowStock: true (only show items with ≤5 total stock)
 - code: a specific coupon code (for CouponBar only)
 
 ## Available Coupons
-SPRING25 (25% off spring), SAVE15 ($15 off $100+), KIDS20 (20% off kids), MEMBER10 (10% loyalty exclusive), FREESHIP (free shipping), MOMDAY30 (30% off women's Mother's Day)
+${couponText}
 
 ## Response Format
 You MUST return a valid JSON object with exactly this structure:
@@ -47,9 +56,12 @@ Rules:
 - You can include 1-5 layout items
 - "message" should be 1-2 sentences, warm and direct
 - If a user asks for a swipe/dating-app/Tinder-style interface, use SwipeCard in the center position
+- If a user asks for inventory, stock levels, SKUs, or a store associate / back-office view, you MUST use InventoryTable in the center position
 - Never invent module names not in the list above`
+}
 
 export default function ChatPanel({ onLayoutChange, externalMessages = [] }) {
+  const { storeName, products, coupons } = useStore()
   const [internalMessages, setInternalMessages] = useState([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -88,7 +100,7 @@ export default function ChatPanel({ onLayoutChange, externalMessages = [] }) {
       const response = await client.messages.create({
         model: 'claude-sonnet-4-6',
         max_tokens: 1024,
-        system: SYSTEM_PROMPT,
+        system: buildSystemPrompt(storeName, products, coupons),
         messages: newMessages
           .filter((m) => m.role === 'user' || m.role === 'assistant')
           .map((m) => ({ role: m.role, content: m.content })),
@@ -155,7 +167,7 @@ export default function ChatPanel({ onLayoutChange, externalMessages = [] }) {
       <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-green-500" />
-          <span className="text-sm font-semibold text-zinc-800">Folio Assistant</span>
+          <span className="text-sm font-semibold text-zinc-800">{storeName} Assistant</span>
         </div>
         <span className="text-xs text-zinc-400">Personalize your view</span>
       </div>

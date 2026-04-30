@@ -1,4 +1,4 @@
-import { products } from '../../data/storeData'
+import { useStore } from '../../context/StoreContext'
 
 function applyFilters(items, filter = {}) {
   return items.filter((p) => {
@@ -12,6 +12,7 @@ function applyFilters(items, filter = {}) {
 }
 
 export default function InventoryTable({ filter = {} }) {
+  const { products } = useStore()
   const filtered = applyFilters(products, filter)
 
   return (

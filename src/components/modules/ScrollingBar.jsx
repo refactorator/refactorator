@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { products, getProductImage } from '../../data/storeData'
+import { useStore } from '../../context/StoreContext'
 
 function applyFilters(items, filter = {}) {
   return items.filter((p) => {
@@ -21,7 +21,10 @@ function applyFilters(items, filter = {}) {
   })
 }
 
-function getBarTitle(filter) {
+function getBarTitle(filter, isFallback) {
+  if (isFallback) return filter.category
+    ? filter.category.charAt(0).toUpperCase() + filter.category.slice(1)
+    : 'Featured'
   if (filter.lowStock) return 'Low Stock Alert'
   if (filter.tags?.includes('new') || filter.tag === 'new') return 'New Arrivals'
   if (filter.tags?.includes('sale') || filter.tag === 'sale') return 'On Sale'
@@ -32,14 +35,24 @@ function getBarTitle(filter) {
 }
 
 export default function ScrollingBar({ filter = {} }) {
+  const { products, getProductImage } = useStore()
   const trackRef = useRef(null)
+
   const filtered = applyFilters(products, filter)
-  const items = [...filtered, ...filtered, ...filtered]
-  const title = getBarTitle(filter)
+
+  // Fall back to a general feed if the filter returns nothing (real stores rarely have specific tags/categories)
+  // Exception: lowStock filter — empty is meaningful (no low-stock items is good news)
+  const isFallback = filtered.length === 0 && !filter.lowStock && products.length > 0
+  const source = isFallback
+    ? products.slice(0, 25)
+    : filtered
+
+  const title = getBarTitle(filter, isFallback)
+  const items = source.length > 0 ? [...source, ...source, ...source] : []
 
   useEffect(() => {
     const track = trackRef.current
-    if (!track || filtered.length === 0) return
+    if (!track || source.length === 0) return
     let pos = 0
     const speed = 0.4
     let raf
@@ -52,9 +65,9 @@ export default function ScrollingBar({ filter = {} }) {
     }
     raf = requestAnimationFrame(animate)
     return () => cancelAnimationFrame(raf)
-  }, [filtered.length])
+  }, [source.length])
 
-  if (filtered.length === 0) {
+  if (source.length === 0) {
     return (
       <div className="flex items-center justify-center h-12 text-zinc-400 text-sm px-4">
         No items match this filter
@@ -84,7 +97,7 @@ export default function ScrollingBar({ filter = {} }) {
                 <span className="text-xs font-semibold text-zinc-700">{p.name}</span>
                 <span className="text-xs font-bold text-zinc-900">${p.price}</span>
                 {p.tags.includes('sale') && <span className="badge-sale">Sale</span>}
-                {totalStock <= 5 && <span className="badge-low">{totalStock} left</span>}
+                {totalStock > 0 && totalStock <= 5 && <span className="badge-low">{totalStock} left</span>}
               </div>
             )
           })}

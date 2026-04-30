@@ -1,6 +1,7 @@
-import { storeInfo } from '../../data/storeData'
+import { useStore } from '../../context/StoreContext'
 
 export default function LoyaltyWidget({ filter = {} }) {
+  const { storeInfo } = useStore()
   const { loyaltyPoints, loyaltyTier, nextTier, pointsToNextTier, recentOrders } = storeInfo
   const totalToNext = loyaltyPoints + pointsToNextTier
   const progress = Math.round((loyaltyPoints / totalToNext) * 100)

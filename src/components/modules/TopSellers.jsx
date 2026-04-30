@@ -1,8 +1,9 @@
-import { products, getProductImage } from '../../data/storeData'
+import { useStore } from '../../context/StoreContext'
+
+const MAX_FEATURED = 15
 
 function applyFilters(items, filter = {}) {
   return items.filter((p) => {
-    if (!p.tags.includes('top-seller')) return false
     if (filter.category && p.category !== filter.category) return false
     if (filter.gender && p.gender !== filter.gender && p.gender !== 'unisex') return false
     if (filter.tag && !p.tags.includes(filter.tag)) return false
@@ -10,18 +11,25 @@ function applyFilters(items, filter = {}) {
       const required = Array.isArray(filter.tags) ? filter.tags : [filter.tags]
       if (!required.some((t) => p.tags.includes(t))) return false
     }
+    if (filter.brand && p.brand?.toLowerCase() !== filter.brand.toLowerCase()) return false
     return true
   })
 }
 
 export default function TopSellers({ filter = {} }) {
+  const { products, getProductImage } = useStore()
   const filtered = applyFilters(products, filter)
-  const title = filter.tag === 'mothers-day' ? "Mother's Day — Top Sellers" : 'Top Sellers'
 
-  if (filtered.length === 0) {
+  const explicitTopSellers = filtered.filter((p) => p.tags.includes('top-seller'))
+  const useExplicit = explicitTopSellers.length > 0
+  const display = useExplicit ? explicitTopSellers : filtered.slice(0, MAX_FEATURED)
+  const label = useExplicit ? 'Top Sellers' : 'Featured'
+  const title = filter.tag === 'mothers-day' ? "Mother's Day — Top Sellers" : label
+
+  if (display.length === 0) {
     return (
       <div className="flex items-center justify-center h-32 text-zinc-400 text-sm">
-        No top sellers match this filter
+        No products match this filter
       </div>
     )
   }
@@ -30,10 +38,10 @@ export default function TopSellers({ filter = {} }) {
     <div>
       <div className="px-5 pt-5 pb-3 border-b border-zinc-100">
         <h2 className="text-lg font-bold text-zinc-900 tracking-tight">{title}</h2>
-        <p className="text-xs text-zinc-400 mt-0.5">{filtered.length} items</p>
+        <p className="text-xs text-zinc-400 mt-0.5">{display.length} items</p>
       </div>
       <div className="p-4 space-y-1">
-        {filtered.map((p, i) => {
+        {display.map((p, i) => {
           const totalStock = Object.values(p.stock).reduce((a, b) => a + b, 0)
           return (
             <div

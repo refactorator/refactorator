@@ -1,10 +1,11 @@
 import { useState, useRef } from 'react'
-import { products, getProductImage } from '../../data/storeData'
+import { useStore } from '../../context/StoreContext'
 import { applyProductFilters } from './ProductGrid'
 
 const SWIPE_THRESHOLD = 80
 
 export default function SwipeCard({ filter = {} }) {
+  const { products, getProductImage } = useStore()
   const filtered = applyProductFilters(products, filter)
   const [index, setIndex] = useState(0)
   const [cart, setCart] = useState([])

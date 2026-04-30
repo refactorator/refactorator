@@ -1,4 +1,4 @@
-import { products, getProductImage } from '../../data/storeData'
+import { useStore } from '../../context/StoreContext'
 
 export function applyProductFilters(items, filter = {}) {
   return items.filter((p) => {
@@ -29,6 +29,7 @@ function getSectionTitle(filter) {
 }
 
 export default function ProductGrid({ filter = {}, hideHeader = false }) {
+  const { products, getProductImage } = useStore()
   const filtered = applyProductFilters(products, filter)
   const isSaleView = filter.tags?.includes('sale') || filter.tag === 'sale'
   const title = getSectionTitle(filter)
@@ -69,11 +70,15 @@ export default function ProductGrid({ filter = {}, hideHeader = false }) {
                   {isNew && !isSaleView && <span className="badge-new">New</span>}
                   {hasSale && !isSaleView && <span className="badge-sale">Sale</span>}
                 </div>
-                {isLowStock && (
+                {totalStock === 0 ? (
+                  <div className="absolute bottom-2 left-2 right-2 bg-white/90 text-xs font-semibold text-zinc-400 text-center py-1 rounded-lg">
+                    Out of stock
+                  </div>
+                ) : isLowStock ? (
                   <div className="absolute bottom-2 left-2 right-2 bg-white/90 text-xs font-semibold text-amber-700 text-center py-1 rounded-lg">
                     Only {totalStock} left
                   </div>
-                )}
+                ) : null}
               </div>
               <p className="text-xs text-zinc-400 uppercase tracking-wider mb-0.5">{product.category}</p>
               <p className="text-sm font-semibold text-zinc-900 leading-tight">{product.name}</p>

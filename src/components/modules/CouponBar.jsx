@@ -1,6 +1,7 @@
-import { coupons } from '../../data/storeData'
+import { useStore } from '../../context/StoreContext'
 
 export default function CouponBar({ filter = {} }) {
+  const { coupons } = useStore()
   let filtered = coupons.filter((c) => c.active)
   if (filter.code) filtered = filtered.filter((c) => c.code === filter.code)
 

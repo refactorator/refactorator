@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react'
 import ChatPanel from './components/ChatPanel'
 import StorefrontPanel from './components/StorefrontPanel'
 import ProfileSelector from './components/ProfileSelector'
+import StoreConnector from './components/StoreConnector'
+import { useStore } from './context/StoreContext'
 
 const DEFAULT_LAYOUT = [
   { position: 'top', module: 'ScrollingBar', filter: { tags: ['new'] } },
@@ -10,6 +12,7 @@ const DEFAULT_LAYOUT = [
 ]
 
 export default function App() {
+  const { storeName, isDemo } = useStore()
   const [layout, setLayout] = useState(DEFAULT_LAYOUT)
   const [activeProfile, setActiveProfile] = useState(null)
   const [chatMessages, setChatMessages] = useState([])
@@ -37,8 +40,8 @@ export default function App() {
       <header className="bg-white border-b border-zinc-200 px-6 shrink-0">
         <div className="max-w-screen-2xl mx-auto flex items-center justify-between h-14 gap-6">
           <div className="flex items-center gap-4 shrink-0">
-            <span className="text-xl font-black tracking-tighter text-zinc-900">FOLIO</span>
-            <span className="text-xs text-zinc-300 font-medium hidden sm:block">New York</span>
+            <span className="text-xl font-black tracking-tighter text-zinc-900">{storeName.toUpperCase()}</span>
+            {isDemo && <span className="text-xs text-zinc-300 font-medium hidden sm:block">New York</span>}
           </div>
           <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-zinc-400 uppercase tracking-widest">
             <a href="#" className="hover:text-zinc-900 transition-colors">Women</a>
@@ -50,7 +53,8 @@ export default function App() {
           <div className="flex-1 flex justify-center">
             <ProfileSelector activeProfile={activeProfile} onSelect={handleProfileSelect} />
           </div>
-          <div className="flex items-center gap-4 shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
+            <StoreConnector />
             <span className="text-xs text-zinc-400 hidden sm:block">Bag (0)</span>
             <div className="w-7 h-7 rounded-full bg-zinc-900 flex items-center justify-center text-xs text-white font-semibold">J</div>
           </div>
