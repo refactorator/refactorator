@@ -37,9 +37,15 @@ React + Vite + Tailwind + Anthropic SDK (claude-sonnet-4-6). 7 layout modules: P
 - [x] "Only 0 left" on out-of-stock products → fixed: now shows "Out of stock"
 - [x] loremflickr 500 errors → fixed: replaced with picsum.photos
 - [x] Sports bras/pullovers/one-pieces uncategorized → fixed: added to tops pattern
-- [ ] No pagination — limited to 250 products per fetch
+- [x] No pagination — fixed: parallel fetch of 4 pages, up to 1000 products
+- [x] Category nav showing raw Shopify product_type values → fixed: MAPPED_CATEGORIES allowlist
+- [x] Filter editor clips below viewport → fixed: max-h-72 overflow-y-auto
+- [x] ProductGrid renders 1000 products at once → fixed: hard cap at 80, shows "X of Y" notice
+- [x] lowStock filter missing from ProductGrid applyProductFilters → fixed
+- [x] InventoryTable search input non-functional → fixed: wired to useState, filters name+SKU
+- [x] TopSellers rows clickable but do nothing → fixed: open real product pages on click
 - [ ] No mobile layout
-- [ ] AI occasionally returns wrong modules (e.g. "store associate view" without InventoryTable) — system prompt could be more directive
+- [ ] AI occasionally returns wrong modules — system prompt could be more directive
 - [ ] Personas that use "mothers-day" or "new" tags show empty modules on real stores that don't use those tags
 
 ## Product decisions (do not undo these)
