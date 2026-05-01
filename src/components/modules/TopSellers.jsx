@@ -1,5 +1,6 @@
 import { useStore } from '../../context/StoreContext'
 
+
 const MAX_FEATURED = 15
 
 function applyFilters(items, filter = {}) {
@@ -17,7 +18,7 @@ function applyFilters(items, filter = {}) {
 }
 
 export default function TopSellers({ filter = {} }) {
-  const { products, getProductImage } = useStore()
+  const { products, getProductImage, storeDomain } = useStore()
   const filtered = applyFilters(products, filter)
 
   const explicitTopSellers = filtered.filter((p) => p.tags.includes('top-seller'))
@@ -46,6 +47,7 @@ export default function TopSellers({ filter = {} }) {
           return (
             <div
               key={p.id}
+              onClick={() => storeDomain && window.open(`https://${storeDomain}/products/${p.sku}`, '_blank')}
               className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-stone-50 transition-colors cursor-pointer"
             >
               <span className="text-xs font-bold text-zinc-300 w-5 shrink-0 text-right">#{i + 1}</span>

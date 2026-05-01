@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useStore } from '../../context/StoreContext'
 
 function applyFilters(items, filter = {}) {
@@ -13,7 +14,10 @@ function applyFilters(items, filter = {}) {
 
 export default function InventoryTable({ filter = {} }) {
   const { products } = useStore()
-  const filtered = applyFilters(products, filter)
+  const [search, setSearch] = useState('')
+  const filtered = applyFilters(products, filter).filter(p =>
+    !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase())
+  )
 
   return (
     <div className="p-4">
@@ -24,6 +28,8 @@ export default function InventoryTable({ filter = {} }) {
         <input
           type="text"
           placeholder="Search SKU or product..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
           className="bg-stone-50 border border-zinc-200 text-zinc-700 text-xs rounded-lg px-3 py-2 w-52 focus:outline-none focus:border-zinc-400 placeholder-zinc-400"
         />
       </div>

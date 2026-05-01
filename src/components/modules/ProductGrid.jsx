@@ -15,6 +15,10 @@ export function applyProductFilters(items, filter = {}) {
       if (!p.sizes.some((sz) => sz.toUpperCase() === s)) return false
       if ((p.stock[s] ?? p.stock[filter.size]) === 0) return false
     }
+    if (filter.lowStock) {
+      const total = Object.values(p.stock).reduce((a, b) => a + b, 0)
+      if (total > 5 || total === 0) return false
+    }
     return true
   })
 }
@@ -28,9 +32,12 @@ function getSectionTitle(filter) {
   return 'All Products'
 }
 
+const PAGE_SIZE = 80
+
 export default function ProductGrid({ filter = {}, hideHeader = false }) {
   const { products, getProductImage, storeDomain } = useStore()
   const filtered = applyProductFilters(products, filter)
+  const visible = filtered.slice(0, PAGE_SIZE)
   const isSaleView = filter.tags?.includes('sale') || filter.tag === 'sale'
   const title = getSectionTitle(filter)
 
@@ -51,7 +58,7 @@ export default function ProductGrid({ filter = {}, hideHeader = false }) {
         </div>
       )}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 p-5">
-        {filtered.map((product) => {
+        {visible.map((product) => {
           const isNew = product.tags.includes('new')
           const hasSale = product.tags.includes('sale')
           const totalStock = Object.values(product.stock).reduce((a, b) => a + b, 0)
@@ -99,6 +106,11 @@ export default function ProductGrid({ filter = {}, hideHeader = false }) {
           )
         })}
       </div>
+      {filtered.length > PAGE_SIZE && (
+        <p className="text-xs text-zinc-400 text-center pb-5">
+          Showing {PAGE_SIZE} of {filtered.length} — use filters to narrow results
+        </p>
+      )}
     </div>
   )
 }
