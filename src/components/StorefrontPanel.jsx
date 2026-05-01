@@ -64,7 +64,7 @@ function FilterEditor({ module, filter, onSave, onClose }) {
   const showLowStock = ['InventoryTable','ScrollingBar'].includes(module)
 
   return (
-    <div className="absolute top-full left-0 right-0 z-30 bg-white border border-zinc-200 rounded-b-xl shadow-lg p-4 space-y-4">
+    <div className="absolute top-full left-0 right-0 z-30 bg-white border border-zinc-200 rounded-b-xl shadow-lg p-4 space-y-4 max-h-72 overflow-y-auto">
       {showCategoryFilter && (
         <div>
           <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Category</p>

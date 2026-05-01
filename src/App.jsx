@@ -116,11 +116,12 @@ export default function App() {
     return () => clearTimeout(t)
   }, [toast])
 
-  // Dynamic category nav from real store data
-  const categories = [...new Set(products.map(p => p.category))].filter(Boolean).sort()
-  const navCategories = categories.length > 0
-    ? categories.slice(0, 5)
-    : ['Women', 'Men', 'Kids', 'Sale', 'New']
+  // Dynamic category nav — only show clean mapped categories, not raw product_type fallbacks
+  const MAPPED_CATEGORIES = ['tops', 'pants', 'dresses', 'outerwear', 'shoes', 'accessories', 'kids']
+  const categories = [...new Set(products.map(p => p.category))]
+    .filter(c => MAPPED_CATEGORIES.includes(c))
+    .sort()
+  const navCategories = categories
 
   const handleLayoutChange = useCallback((newLayout) => {
     setLayout(newLayout)
