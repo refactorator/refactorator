@@ -57,11 +57,12 @@ Rules:
 - "message" should be 1-2 sentences, warm and direct
 - If a user asks for a swipe/dating-app/Tinder-style interface, use SwipeCard in the center position
 - If a user asks for inventory, stock levels, SKUs, or a store associate / back-office view, you MUST use InventoryTable in the center position
+- Always return at least 2 layout items. A single module leaves the interface feeling empty. If the user asks for just one thing, add a complementary module (e.g. ScrollingBar on top or TopSellers on the right)
 - Never invent module names not in the list above`
 }
 
 export default function ChatPanel({ onLayoutChange, externalMessages = [] }) {
-  const { storeName, products, coupons } = useStore()
+  const { storeName, storeDomain, products, coupons } = useStore()
   const [internalMessages, setInternalMessages] = useState([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -159,7 +160,7 @@ export default function ChatPanel({ onLayoutChange, externalMessages = [] }) {
     el.style.height = Math.min(el.scrollHeight, 120) + 'px'
   }
 
-  const messages = internalMessages
+  const messages = internalMessages.filter(m => m.role !== 'system')
 
   return (
     <div className="panel flex flex-col h-full">
@@ -167,7 +168,7 @@ export default function ChatPanel({ onLayoutChange, externalMessages = [] }) {
       <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-green-500" />
-          <span className="text-sm font-semibold text-zinc-800">{storeName} Assistant</span>
+          <span className="text-sm font-semibold text-zinc-800">{storeDomain || storeName || 'Gooey'} Assistant</span>
         </div>
         <span className="text-xs text-zinc-400">Personalize your view</span>
       </div>

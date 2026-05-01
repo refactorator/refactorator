@@ -41,7 +41,7 @@ export async function fetchShopifyStore(domain) {
   }
 
   const storeName = deriveStoreName(cleanDomain, allProducts)
-  return mapProducts(allProducts, storeName)
+  return { ...mapProducts(allProducts, storeName), storeDomain: cleanDomain }
 }
 
 function deriveStoreName(domain, products) {

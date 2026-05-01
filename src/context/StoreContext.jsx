@@ -1,28 +1,27 @@
 import { createContext, useContext, useState } from 'react'
-import { products as demoProducts, coupons as demoCoupons, storeInfo as demoStoreInfo, getProductImage as demoGetImage } from '../data/storeData'
 import { fetchShopifyStore } from '../services/shopifyService'
 
 const StoreContext = createContext(null)
 
-const DEMO_STATE = {
-  products: demoProducts,
-  coupons: demoCoupons,
-  storeInfo: demoStoreInfo,
-  storeName: 'Folio',
-  getProductImage: demoGetImage,
-  isDemo: true,
+const EMPTY_STATE = {
+  products: [],
+  coupons: [],
+  storeInfo: null,
+  storeName: null,
+  storeDomain: null,
+  getProductImage: () => null,
   isLoading: false,
   error: null,
 }
 
 export function StoreProvider({ children }) {
-  const [state, setState] = useState(DEMO_STATE)
+  const [state, setState] = useState(EMPTY_STATE)
 
   async function connectShopifyStore(domain) {
     setState((s) => ({ ...s, isLoading: true, error: null }))
     try {
       const data = await fetchShopifyStore(domain)
-      setState({ ...data, isDemo: false, isLoading: false, error: null })
+      setState({ ...EMPTY_STATE, ...data, isLoading: false })
       return { success: true, storeName: data.storeName, productCount: data.products.length }
     } catch (err) {
       setState((s) => ({ ...s, isLoading: false, error: err.message }))
@@ -31,7 +30,7 @@ export function StoreProvider({ children }) {
   }
 
   function disconnect() {
-    setState(DEMO_STATE)
+    setState(EMPTY_STATE)
   }
 
   return (

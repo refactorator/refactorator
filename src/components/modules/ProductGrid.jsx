@@ -29,7 +29,7 @@ function getSectionTitle(filter) {
 }
 
 export default function ProductGrid({ filter = {}, hideHeader = false }) {
-  const { products, getProductImage } = useStore()
+  const { products, getProductImage, storeDomain } = useStore()
   const filtered = applyProductFilters(products, filter)
   const isSaleView = filter.tags?.includes('sale') || filter.tag === 'sale'
   const title = getSectionTitle(filter)
@@ -57,8 +57,10 @@ export default function ProductGrid({ filter = {}, hideHeader = false }) {
           const totalStock = Object.values(product.stock).reduce((a, b) => a + b, 0)
           const isLowStock = totalStock <= 5
 
+          const buyUrl = storeDomain ? `https://${storeDomain}/products/${product.sku}` : null
+
           return (
-            <div key={product.id} className="group cursor-pointer">
+            <div key={product.id} className="group cursor-pointer" onClick={() => buyUrl && window.open(buyUrl, '_blank')}>
               <div className="relative overflow-hidden rounded-xl bg-zinc-100 aspect-[3/4] mb-3">
                 <img
                   src={getProductImage(product, 300, 400)}
@@ -82,10 +84,15 @@ export default function ProductGrid({ filter = {}, hideHeader = false }) {
               </div>
               <p className="text-xs text-zinc-400 uppercase tracking-wider mb-0.5">{product.category}</p>
               <p className="text-sm font-semibold text-zinc-900 leading-tight">{product.name}</p>
-              <div className="flex items-baseline gap-2 mt-1">
-                <span className="text-sm font-bold text-zinc-900">${product.price}</span>
-                {product.originalPrice && (
-                  <span className="text-xs text-zinc-400 line-through">${product.originalPrice}</span>
+              <div className="flex items-baseline justify-between mt-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-sm font-bold text-zinc-900">${product.price}</span>
+                  {product.originalPrice && (
+                    <span className="text-xs text-zinc-400 line-through">${product.originalPrice}</span>
+                  )}
+                </div>
+                {buyUrl && (
+                  <span className="text-xs text-zinc-400 group-hover:text-zinc-700 transition-colors">Shop ↗</span>
                 )}
               </div>
             </div>

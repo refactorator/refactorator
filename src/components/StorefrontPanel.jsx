@@ -294,9 +294,10 @@ export default function StorefrontPanel({ layout = [], onLayoutChange }) {
     return (
       <div
         className={`${className} relative transition-colors ${isOver ? 'bg-zinc-50 ring-2 ring-inset ring-zinc-300 rounded-xl' : ''}`}
-        onDragOver={e => { e.preventDefault(); setDragOverPos(position) }}
-        onDragLeave={() => setDragOverPos(null)}
-        onDrop={() => handleDrop(position)}
+        onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverPos(position) }}
+        onDragEnter={e => { e.preventDefault(); setDragOverPos(position) }}
+        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverPos(null) }}
+        onDrop={e => { e.preventDefault(); handleDrop(position) }}
       >
         {children}
       </div>
@@ -314,9 +315,9 @@ export default function StorefrontPanel({ layout = [], onLayoutChange }) {
       <div className={`h-full flex flex-col transition-opacity ${draggedPos === pos ? 'opacity-30' : ''}`}>
         {/* Header bar */}
         <div
-          className="flex items-center justify-between px-3 py-2 border-b border-zinc-100 shrink-0 bg-white cursor-grab active:cursor-grabbing select-none"
-          draggable
-          onDragStart={() => setDraggedPos(pos)}
+          className="flex items-center justify-between px-3 py-2 border-b border-zinc-100 shrink-0 bg-white select-none"
+          draggable="true"
+          onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; setDraggedPos(pos) }}
           onDragEnd={() => { setDraggedPos(null); setDragOverPos(null) }}
         >
           <div className="flex items-center gap-2">
