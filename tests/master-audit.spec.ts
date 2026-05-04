@@ -182,12 +182,10 @@ test('3.1 · Header: GOOEY branding, green dot, store domain visible after conne
   await expect(page.locator('span:has-text("GOOEY")')).toBeVisible()
   await expect(page.locator('.bg-green-500').first()).toBeVisible()
 
-  // URL bar should show "gymshark" in some form
+  // URL bar should show "gymshark" in input value (not innerText — input values aren't in innerText)
   const urlBar = page.locator('input[placeholder*="Shopify store"]')
-  // When blurred, input value is empty but a display value "gymshark.com — ..." shows
-  // The green dot confirms connection — check the form for the domain display
-  const formText = await page.locator('form').innerText()
-  expect(formText.toLowerCase()).toContain('gymshark')
+  const inputValue = await urlBar.inputValue()
+  expect(inputValue.toLowerCase()).toContain('gymshark')
   console.log('PASS: header shows GOOEY, green dot, gymshark domain')
   await ss(page, '03-header-connected')
 })
@@ -238,7 +236,8 @@ test('3.3 · Category nav: clicking a category filters the product grid', async 
   await page.waitForTimeout(500)
 
   // Module bar should show the category name or a filtered label
-  const moduleBar = page.locator('.text-xs.font-semibold.text-zinc-800.uppercase')
+  // StorefrontPanel uses text-zinc-500, not text-zinc-800, for module header labels
+  const moduleBar = page.locator('.text-xs.font-semibold.text-zinc-500.uppercase')
   await expect(moduleBar.first()).toBeVisible()
 
   await ss(page, '03c-category-filtered')
@@ -269,8 +268,9 @@ test('4.2 · ScrollingBar: items visible, animation running, prices shown', asyn
   await page.waitForLoadState('domcontentloaded')
   await connectStore(page)
 
-  // Scrolling bar should be at top — has a track with items
-  const scrollTrack = page.locator('[class*="translate"]').first()
+  // Scrolling bar uses inline style transform (via requestAnimationFrame), not a Tailwind translate class
+  // Find the inner flex track div that gets the translateX style applied via JS
+  const scrollTrack = page.locator('.border-b.border-zinc-100.shrink-0').first()
   await expect(scrollTrack).toBeVisible({ timeout: 10_000 })
 
   // Items in the bar have prices ($)
