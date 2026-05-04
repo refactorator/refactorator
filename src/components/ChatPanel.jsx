@@ -2,15 +2,20 @@ import { useState, useRef, useEffect } from 'react'
 import Anthropic from '@anthropic-ai/sdk'
 import { useStore } from '../context/StoreContext'
 
-function buildSystemPrompt(storeName, products, coupons) {
+function buildSystemPrompt(stores, products, coupons) {
+  const storeNames = stores.map(s => s.name).join(', ') || 'this store'
   const categories = [...new Set(products.map((p) => p.category))].filter(Boolean)
   const tags = [...new Set(products.flatMap((p) => p.tags))].filter(Boolean)
   const activeCoupons = coupons.filter((c) => c.active)
   const couponText = activeCoupons.length
     ? activeCoupons.map((c) => `${c.code} (${c.discount})`).join(', ')
-    : 'No active coupons available for this store'
+    : 'No active coupons available'
 
-  return `You are the UI personalization engine for ${storeName}. Your job is to interpret natural language requests and return structured JSON describing how to render the storefront interface.
+  const storeBreakdown = stores.length > 1
+    ? `\n## Connected Stores\n${stores.map(s => `- ${s.name} (${s.domain}): ${s.products?.length ?? 0} products`).join('\n')}\nProducts are tagged with their source store. Filters apply across all stores unless the user specifies one.`
+    : ''
+
+  return `You are the UI personalization engine for ${storeNames}. Your job is to interpret natural language requests and return structured JSON describing how to render the storefront interface.${storeBreakdown}
 
 ## Available Modules
 - **ProductGrid**: A grid of product cards. Supports filters.
@@ -62,7 +67,9 @@ Rules:
 }
 
 export default function ChatPanel({ onLayoutChange, externalMessages = [] }) {
-  const { storeName, storeDomain, products, coupons } = useStore()
+  const { stores, allProducts, allCoupons, storeDomain, storeName } = useStore()
+  const products = allProducts
+  const coupons = allCoupons
   const [internalMessages, setInternalMessages] = useState([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -101,7 +108,7 @@ export default function ChatPanel({ onLayoutChange, externalMessages = [] }) {
       const response = await client.messages.create({
         model: 'claude-sonnet-4-6',
         max_tokens: 1024,
-        system: buildSystemPrompt(storeName, products, coupons),
+        system: buildSystemPrompt(stores, products, coupons),
         messages: newMessages
           .filter((m) => m.role === 'user' || m.role === 'assistant')
           .map((m) => ({ role: m.role, content: m.content })),

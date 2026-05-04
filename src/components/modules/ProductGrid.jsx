@@ -35,7 +35,7 @@ function getSectionTitle(filter) {
 const PAGE_SIZE = 80
 
 export default function ProductGrid({ filter = {}, hideHeader = false }) {
-  const { products, getProductImage, storeDomain } = useStore()
+  const { products, getProductImage } = useStore()
   const filtered = applyProductFilters(products, filter)
   const visible = filtered.slice(0, PAGE_SIZE)
   const isSaleView = filter.tags?.includes('sale') || filter.tag === 'sale'
@@ -64,10 +64,10 @@ export default function ProductGrid({ filter = {}, hideHeader = false }) {
           const totalStock = Object.values(product.stock).reduce((a, b) => a + b, 0)
           const isLowStock = totalStock <= 5
 
-          const buyUrl = storeDomain ? `https://${storeDomain}/products/${product.sku}` : null
+          const buyUrl = product.storeDomain ? `https://${product.storeDomain}/products/${product.sku}` : null
 
           return (
-            <div key={product.id} className="group cursor-pointer" onClick={() => buyUrl && window.open(buyUrl, '_blank')}>
+            <div key={`${product.storeDomain}-${product.id}`} className="group cursor-pointer" onClick={() => buyUrl && window.open(buyUrl, '_blank')}>
               <div className="relative overflow-hidden rounded-xl bg-zinc-100 aspect-[3/4] mb-3">
                 <img
                   src={getProductImage(product, 300, 400)}
@@ -79,6 +79,11 @@ export default function ProductGrid({ filter = {}, hideHeader = false }) {
                   {isNew && !isSaleView && <span className="badge-new">New</span>}
                   {hasSale && !isSaleView && <span className="badge-sale">Sale</span>}
                 </div>
+                {product.storeName && (
+                  <div className="absolute top-2 right-2">
+                    <span className="text-[10px] font-semibold bg-white/90 text-zinc-600 px-1.5 py-0.5 rounded-md">{product.storeName}</span>
+                  </div>
+                )}
                 {totalStock === 0 ? (
                   <div className="absolute bottom-2 left-2 right-2 bg-white/90 text-xs font-semibold text-zinc-400 text-center py-1 rounded-lg">
                     Out of stock
