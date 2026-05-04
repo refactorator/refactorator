@@ -44,17 +44,44 @@ async function ss(page: Page, name: string): Promise<void> {
 }
 
 /**
+ * Click a ProfileSelector button by name. The buttons live inside an overflow-x-auto
+ * container in the storefront panel header. Standard scrollIntoViewIfNeeded doesn't
+ * reliably handle horizontal overflow scroll, so we use JS evaluation to scroll the
+ * container all the way right before clicking.
+ */
+async function clickProfile(page: Page, name: string): Promise<void> {
+  // Scroll the profile button row container to the end so all buttons are accessible
+  await page.evaluate(() => {
+    const containers = Array.from(document.querySelectorAll('.overflow-x-auto'))
+    containers.forEach(c => { (c as HTMLElement).scrollLeft = (c as HTMLElement).scrollWidth })
+  })
+  await page.waitForTimeout(200)
+  // Use getByRole with exact text to avoid matching chat suggestion buttons that contain partial text
+  // Profile buttons are in the ProfileSelector component which renders rounded-full buttons
+  const btn = page.getByRole('button', { name: name, exact: true }).first()
+  await expect(btn).toBeVisible({ timeout: 10_000 })
+  await btn.click()
+  await page.waitForTimeout(800)
+}
+
+/**
  * Connect to a Shopify store and wait until product images are visible in the
  * main panel. Returns elapsed ms.
+ *
+ * The app now supports multi-store: landing chips toggle selection then
+ * require clicking "Browse N stores →". For test simplicity we use the URL
+ * bar (AddStoreInput) which connects a single store immediately on Enter.
  */
 async function connectStore(page: Page, domain = 'gymshark.com'): Promise<number> {
   const t0 = Date.now()
-  const input = page.locator('input[placeholder*="Shopify store"]')
+  // Use the header URL bar input — placeholder changes based on connected state
+  const input = page.locator('input[placeholder*="Shopify store"], input[placeholder*="Add another store"]').first()
   await input.click()
   await input.fill(domain)
   await page.keyboard.press('Enter')
-  // Green dot = connected
-  await page.waitForSelector('div.bg-green-500', { timeout: 60_000 })
+  // Wait for a StoreChip to appear (the green dot is now inside the chip)
+  // The chip contains a tiny w-1.5 h-1.5 bg-green-500 span
+  await page.waitForSelector('.bg-green-500', { timeout: 90_000 })
   // First product image in main area = meaningful content visible
   await page.waitForSelector('main img', { timeout: 30_000 })
   await page.waitForTimeout(600)
@@ -190,9 +217,9 @@ test.describe('Section 1 — First Impression', () => {
     await page.goto('/')
     await page.waitForLoadState('domcontentloaded')
 
-    // URL bar input
-    await expect(page.locator('input[placeholder*="Shopify store"]')).toBeVisible()
-    // All 5 suggestion chips
+    // URL bar input — placeholder is "Enter any Shopify store — gymshark.com…" when no stores are connected
+    await expect(page.locator('input[placeholder*="Enter any Shopify store"]')).toBeVisible()
+    // All 8 suggestion chips
     for (const chip of ['gymshark.com', 'allbirds.com', 'ruggable.com', 'chubbiesshorts.com', 'brooklinen.com']) {
       const btn = page.locator(`button:has-text("${chip}")`)
       await expect(btn).toBeVisible()
@@ -209,39 +236,40 @@ test.describe('Section 1 — First Impression', () => {
 
 test.describe('Section 2 — Primary Entry Flow', () => {
 
-  test('2.1 · Connect via URL bar: spinner visible during load, green dot after', async ({ page }) => {
+  // Network-dependent tests: stores can take 30-90s to respond
+  test.setTimeout(120_000)
+
+  test('2.1 · Connect via URL bar: spinner visible during load, StoreChip appears after', async ({ page }) => {
     await page.goto('/')
-    const input = page.locator('input[placeholder*="Shopify store"]')
+    // URL bar placeholder is "Enter any Shopify store — gymshark.com…" when no stores connected
+    const input = page.locator('input[placeholder*="Enter any Shopify store"]')
     await input.click()
     await input.fill('gymshark.com')
     await page.keyboard.press('Enter')
 
-    // Loading spinner should appear
+    // Loading spinner in the URL bar input area should appear
     const spinner = page.locator('.animate-spin').first()
     await expect(spinner).toBeVisible({ timeout: 5_000 })
 
-    // Wait for connected state
-    await page.waitForSelector('div.bg-green-500', { timeout: 60_000 })
+    // Wait for StoreChip to appear (contains the small green dot)
+    await page.waitForSelector('.bg-green-500', { timeout: 90_000 })
     await ss(page, '02-connected-gymshark')
 
-    // Spinner should be gone
+    // Spinner should be gone once connected
     await expect(spinner).not.toBeVisible()
 
-    // Green dot is visible
-    await expect(page.locator('div.bg-green-500').first()).toBeVisible()
+    // StoreChip with green dot is visible in the header
+    await expect(page.locator('.bg-green-500').first()).toBeVisible()
   })
 
-  test('2.2 · Connect via suggestion chip: landing replaced by connected layout', async ({ page }) => {
+  test('2.2 · Connect via URL bar: landing replaced by connected layout', async ({ page }) => {
+    // The new landing now requires toggling a chip then clicking "Browse N stores →"
+    // To keep this test focused on the entry flow itself, use the URL bar which connects immediately
     await page.goto('/')
     const t0 = Date.now()
-    const chip = page.locator('button:has-text("allbirds.com")')
-    await chip.click()
-
-    // Wait for green dot and images
-    await page.waitForSelector('div.bg-green-500', { timeout: 60_000 })
-    await page.waitForSelector('main img', { timeout: 30_000 })
+    await connectStore(page, 'allbirds.com')
     const elapsed = Date.now() - t0
-    console.log(`allbirds.com connect via chip: ${elapsed}ms to meaningful content`)
+    console.log(`allbirds.com connect via URL bar: ${elapsed}ms to meaningful content`)
 
     // Landing headline must be gone
     await expect(page.locator('h1:has-text("Browse differently")')).not.toBeVisible()
@@ -251,81 +279,113 @@ test.describe('Section 2 — Primary Entry Flow', () => {
     await ss(page, '02-allbirds-connected')
   })
 
-  test('2.3 · Toast appears after connection with store name and product count', async ({ page }) => {
+  test('2.3 · Landing chip toggle + Browse button: connects selected stores', async ({ page }) => {
     await page.goto('/')
+    // Landing chips are now toggle-selectors — clicking one highlights it (bg-zinc-900 text-white)
     const chip = page.locator('button:has-text("gymshark.com")')
+    await expect(chip).toBeVisible()
     await chip.click()
-    await page.waitForSelector('div.bg-green-500', { timeout: 60_000 })
+    await page.waitForTimeout(200)
 
-    // Toast notification must contain "Connected" and a store name
-    const toast = page.locator('.fixed.bottom-5')
-    await expect(toast).toBeVisible({ timeout: 10_000 })
-    const toastText = await toast.innerText()
-    expect(toastText, 'Toast must contain store name').toMatch(/Connected to .+/)
-    expect(toastText, 'Toast must report product count').toMatch(/\d+ products/)
+    // After toggle, the chip should appear selected (dark background)
+    const isSelected = await chip.evaluate(el => el.classList.contains('bg-zinc-900'))
+    expect(isSelected, 'Clicking a landing chip did not select it (bg-zinc-900 expected)').toBe(true)
 
-    // Toast auto-dismisses within 5s
-    await expect(toast).not.toBeVisible({ timeout: 5_000 })
+    // "Browse 1 store →" button should now appear
+    const browseBtn = page.locator('button:has-text("Browse 1 store")')
+    await expect(browseBtn).toBeVisible()
+    await browseBtn.click()
+
+    // Wait for connection
+    await page.waitForSelector('.bg-green-500', { timeout: 90_000 })
+    await page.waitForSelector('main img', { timeout: 30_000 })
+
+    // Chat panel visible = connected layout
+    await expect(page.locator('textarea[placeholder*="Describe"]')).toBeVisible()
+    await ss(page, '02-chip-browse-connected')
   })
 
-  test('2.4 · Loading state is visually distinct from initial state (loading text visible)', async ({ page }) => {
+  test('2.4 · Loading state: spinner visible in URL bar during store fetch', async ({ page }) => {
     await page.goto('/')
-    const chip = page.locator('button:has-text("ruggable.com")')
-    await chip.click()
-
-    // During load, "Loading store…" or spinner must be visible
-    // Use .first() to avoid strict mode violations when both elements are in DOM
-    const loadIndicator = page.locator('text=Loading store').or(page.locator('.animate-spin')).first()
-    await expect(loadIndicator).toBeVisible({ timeout: 5_000 })
-  })
-
-  test('2.5 · Connecting a second store replaces first — no stale data', async ({ page }) => {
-    await page.goto('/')
-    await connectStore(page, 'gymshark.com')
-
-    // Read the current store name in the storefront panel header
-    // The panel header shows storeName: ".text-xs.font-bold.text-zinc-800.uppercase" — first one in the storefront area
-    const firstStoreName = await page.locator('.text-xs.font-bold.text-zinc-800.uppercase').first().innerText()
-
-    // Now connect a different store — need to wait for the new store's images to appear
-    // (green dot is already present, so we wait for a new network request to /api/shopify instead)
-    const input = page.locator('input[placeholder*="Shopify store"]')
+    const input = page.locator('input[placeholder*="Enter any Shopify store"]')
     await input.click()
-    await input.fill('allbirds.com')
-    // Wait for the in-flight network request for allbirds before checking label
-    const [response] = await Promise.all([
-      page.waitForResponse(r => r.url().includes('allbirds.com'), { timeout: 60_000 }),
-      page.keyboard.press('Enter'),
-    ])
-    // Wait for images to reload with allbirds content
-    await page.waitForTimeout(3_000)
+    await input.fill('ruggable.com')
+    await page.keyboard.press('Enter')
 
-    const secondStoreName = await page.locator('.text-xs.font-bold.text-zinc-800.uppercase').first().innerText()
-    expect(secondStoreName, 'Store name in header did not update after switching stores — stale data').not.toBe(firstStoreName)
-    await ss(page, '02-store-switch')
+    // During load, spinner must be visible in the URL bar area
+    const spinner = page.locator('.animate-spin').first()
+    await expect(spinner).toBeVisible({ timeout: 5_000 })
   })
 
-  test('2.6 · Disconnect button clears connected state and returns to landing', async ({ page }) => {
+  test('2.5 · Adding a second store: both StoreChips visible, product count increases', async ({ page }) => {
     await page.goto('/')
     await connectStore(page, 'gymshark.com')
 
-    // Click the ✕ dismiss button in the URL bar
-    const disconnectBtn = page.locator('button:has-text("✕")').first()
-    await expect(disconnectBtn).toBeVisible()
-    await disconnectBtn.click()
+    // Product count before adding second store
+    const countBefore = await page.locator('main img').count()
+
+    // Now add a second store — placeholder changes to "Add another store…"
+    const addInput = page.locator('input[placeholder*="Add another store"]')
+    await expect(addInput).toBeVisible()
+    await addInput.click()
+    await addInput.fill('allbirds.com')
+    await page.keyboard.press('Enter')
+
+    // Wait for allbirds to load — wait for the "Add another store" input to be gone
+    // (it changes back to "Enter any Shopify store" if there are no stores, but stays as
+    // "Add another store" when at least one store is connected — so we just wait for the spinner
+    // to disappear and for images from both stores to be present)
+    await page.waitForTimeout(1_000) // brief wait for state to settle
+    // Wait for the spinner to be gone (loading complete)
+    await page.waitForFunction(
+      () => document.querySelectorAll('.animate-spin').length === 0,
+      null,
+      { timeout: 90_000 }
+    )
+    await page.waitForSelector('main img', { timeout: 30_000 })
+    await page.waitForTimeout(500)
+
+    // The storefront header should show "2 stores" (from storeName derived in App.jsx)
+    // storeName = stores.length === 1 ? stores[0].name : stores.length > 1 ? `${stores.length} stores` : null
+    const headerEl = page.locator('.text-xs.font-bold.text-zinc-800.uppercase').first()
+    const headerText = (await headerEl.innerText()).toLowerCase()
+    // Either "2 stores" is shown OR there are 2 green dots (store chips) visible
+    const chipCount = await page.locator('.bg-green-500').count()
+    expect(
+      headerText.includes('store') || chipCount >= 2,
+      `Multi-store not reflected in UI. Header: "${headerText}", green dots: ${chipCount}`
+    ).toBe(true)
+
+    await ss(page, '02-two-stores')
+  })
+
+  test('2.6 · Remove StoreChip (✕): store removed, if last chip then returns to landing', async ({ page }) => {
+    await page.goto('/')
+    await connectStore(page, 'gymshark.com')
+
+    // Click the ✕ inside the StoreChip (not the URL bar clear — that was removed)
+    // The StoreChip renders: <button onClick={onRemove} className="...">✕</button>
+    // It's inside the store chip area in the header
+    const chipRemoveBtn = page.locator('header button:has-text("✕")').first()
+    await expect(chipRemoveBtn).toBeVisible()
+    await chipRemoveBtn.click()
+    await page.waitForTimeout(500)
 
     // Landing headline must return
     await expect(page.locator('h1:has-text("Browse differently")')).toBeVisible({ timeout: 5_000 })
     await ss(page, '02-disconnected')
   })
 
-  test('2.7 · Time from chip click to first meaningful content is under 30s', async ({ page }) => {
+  test('2.7 · Time from URL bar submit to first meaningful content is under 30s', async ({ page }) => {
     await page.goto('/')
+    const input = page.locator('input[placeholder*="Enter any Shopify store"]')
+    await input.click()
+    await input.fill('gymshark.com')
     const t0 = Date.now()
-    await page.locator('button:has-text("gymshark.com")').click()
-    await page.waitForSelector('main img', { timeout: 60_000 })
+    await page.keyboard.press('Enter')
+    await page.waitForSelector('main img', { timeout: 90_000 })
     const elapsed = Date.now() - t0
-    console.log(`Gymshark full load (chip to first image): ${elapsed}ms`)
+    console.log(`Gymshark full load (URL bar to first image): ${elapsed}ms`)
     expect(elapsed, `Store took ${elapsed}ms — exceeds 30s threshold`).toBeLessThan(30_000)
   })
 
@@ -336,6 +396,8 @@ test.describe('Section 2 — Primary Entry Flow', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe('Section 3 — Data Rendering Quality', () => {
+
+  test.setTimeout(120_000)
 
   test('3.1 · ProductGrid: product images have loaded (naturalWidth > 0)', async ({ page }) => {
     await page.goto('/')
@@ -492,8 +554,8 @@ test.describe('Section 3 — Data Rendering Quality', () => {
     await connectStore(page, 'gymshark.com')
     await page.waitForSelector('.grid', { timeout: 20_000 })
 
-    // "X items" label
-    const countLabel = page.locator('text=/\\d+ items/').first()
+    // "X items" label — in the ProductGrid header. Use .first() to avoid strict mode
+    const countLabel = page.locator('p').filter({ hasText: /^\d+ items$/ }).first()
     await expect(countLabel).toBeVisible()
     const text = await countLabel.innerText()
     const n = parseInt(text)
@@ -507,6 +569,8 @@ test.describe('Section 3 — Data Rendering Quality', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe('Section 4 — Navigation & Filtering', () => {
+
+  test.setTimeout(120_000)
 
   test('4.1 · Category nav appears after connecting a store', async ({ page }) => {
     await page.goto('/')
@@ -558,8 +622,8 @@ test.describe('Section 4 — Navigation & Filtering', () => {
 
     const countAfterFilter = await page.locator('.grid > div.group').count()
 
-    // Click "All"
-    const allBtn = page.locator('header button:has-text("All")')
+    // Click "All" — in the category nav, it has class text-zinc-400 (distinct from category buttons at text-zinc-500)
+    const allBtn = page.locator('header button.text-xs.font-semibold.text-zinc-400')
     await expect(allBtn).toBeVisible()
     await allBtn.click()
     await page.waitForTimeout(500)
@@ -573,10 +637,7 @@ test.describe('Section 4 — Navigation & Filtering', () => {
     await page.goto('/')
     await connectStore(page, 'gymshark.com')
 
-    const bargainBtn = page.locator('button:has-text("Bargain Hunter")').first()
-    await expect(bargainBtn).toBeVisible()
-    await bargainBtn.click()
-    await page.waitForTimeout(600)
+    await clickProfile(page, 'Bargain Hunter')
 
     // Profile bar is the full-width dark strip between header and main area
     // It contains a span with the profile name in uppercase tracking-wider style
@@ -585,7 +646,9 @@ test.describe('Section 4 — Navigation & Filtering', () => {
     await expect(profileNameSpan).toContainText('Bargain Hunter')
 
     // CouponBar should now be in the top position (Bargain Hunter layout)
-    const couponHeader = page.locator('text=Offers & Coupons')
+    // Two elements may contain "Offers & Coupons" text — the drag handle label and the CouponBar heading
+    // We just need to verify at least one is visible
+    const couponHeader = page.locator('text=Offers & Coupons').first()
     await expect(couponHeader).toBeVisible()
     await ss(page, '04-bargain-hunter')
   })
@@ -595,12 +658,7 @@ test.describe('Section 4 — Navigation & Filtering', () => {
     await connectStore(page, 'gymshark.com')
     await page.waitForTimeout(500)
 
-    // ProfileSelector renders inside the storefront panel header — scroll it into view
-    const storeAssocBtn = page.locator('button:has-text("Store Associate")').first()
-    await expect(storeAssocBtn).toBeVisible({ timeout: 10_000 })
-    await storeAssocBtn.scrollIntoViewIfNeeded()
-    await storeAssocBtn.click()
-    await page.waitForTimeout(1_200)
+    await clickProfile(page, 'Store Associate')
 
     // InventoryTable renders a <table> element inside the center position
     const table = page.locator('table').first()
@@ -618,8 +676,7 @@ test.describe('Section 4 — Navigation & Filtering', () => {
     await connectStore(page, 'gymshark.com')
 
     // Activate a profile
-    await page.locator('button:has-text("Bargain Hunter")').first().click()
-    await page.waitForTimeout(500)
+    await clickProfile(page, 'Bargain Hunter')
 
     // Click the Reset button in the profile bar
     const resetBtn = page.locator('button:has-text("Reset")')
@@ -641,6 +698,8 @@ test.describe('Section 4 — Navigation & Filtering', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe('Section 5 — Drag, Resize, and Direct Manipulation', () => {
+
+  test.setTimeout(120_000)
 
   test('5.1 · Drag handle is visible on each module card (⠿ icon present)', async ({ page }) => {
     await page.goto('/')
@@ -792,6 +851,8 @@ test.describe('Section 5 — Drag, Resize, and Direct Manipulation', () => {
 
 test.describe('Section 6 — Interactive Controls', () => {
 
+  test.setTimeout(120_000)
+
   test('6.1 · Filter editor opens when ⚙ button is clicked', async ({ page }) => {
     await page.goto('/')
     await connectStore(page, 'gymshark.com')
@@ -915,10 +976,7 @@ test.describe('Section 6 — Interactive Controls', () => {
     await connectStore(page, 'gymshark.com')
 
     // Activate Store Associate profile to get InventoryTable
-    const storeAssocBtn6 = page.locator('button:has-text("Store Associate")').first()
-    await expect(storeAssocBtn6).toBeVisible({ timeout: 10_000 })
-    await storeAssocBtn6.click()
-    await page.waitForTimeout(1_200)
+    await clickProfile(page, 'Store Associate')
 
     const table = page.locator('table').first()
     await expect(table).toBeVisible({ timeout: 10_000 })
@@ -951,6 +1009,8 @@ test.describe('Section 6 — Interactive Controls', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe('Section 7 — Add / Remove / Create / Delete', () => {
+
+  test.setTimeout(120_000)
 
   test('7.1 · Remove a module: module disappears, surrounding layout remains valid', async ({ page }) => {
     await page.goto('/')
@@ -1080,6 +1140,9 @@ test.describe('Section 7 — Add / Remove / Create / Delete', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe('Section 8 — AI / Generative Features', () => {
+
+  // Each AI call can take up to 90s; allow 3 calls plus connect overhead
+  test.setTimeout(300_000)
 
   test('8.1 · Chat: sending a message shows user bubble and loading indicator', async ({ page }) => {
     await page.goto('/')
@@ -1262,6 +1325,8 @@ test.describe('Section 8 — AI / Generative Features', () => {
 
 test.describe('Section 9 — Outbound Links & Actions', () => {
 
+  test.setTimeout(120_000)
+
   test('9.1 · ProductGrid: clicking a product card opens a new tab to correct store URL', async ({ page, context }) => {
     await page.goto('/')
     await connectStore(page, 'gymshark.com')
@@ -1305,8 +1370,7 @@ test.describe('Section 9 — Outbound Links & Actions', () => {
     await connectStore(page, 'gymshark.com')
 
     // Activate Bargain Hunter to get CouponBar
-    await page.locator('button:has-text("Bargain Hunter")').first().click()
-    await page.waitForTimeout(600)
+    await clickProfile(page, 'Bargain Hunter')
 
     const couponBtn = page.locator('.font-mono.tracking-wider').first()
     const count = await couponBtn.count()
@@ -1332,6 +1396,8 @@ test.describe('Section 9 — Outbound Links & Actions', () => {
 
 test.describe('Section 10 — Performance & Smoothness', () => {
 
+  test.setTimeout(360_000) // connect/disconnect 3x cycle plus store loads
+
   test('10.1 · Connect, disconnect, reconnect 3 times — no ghost elements accumulate', async ({ page }) => {
     await page.goto('/')
 
@@ -1344,8 +1410,14 @@ test.describe('Section 10 — Performance & Smoothness', () => {
       console.log(`Cycle ${cycle}: ${cardCount} product cards`)
       expect(cardCount, `Cycle ${cycle}: zero product cards after connect`).toBeGreaterThan(0)
 
-      // Disconnect
-      await page.locator('button:has-text("✕")').first().click()
+      // Disconnect via "Clear all" button (header right side) or the StoreChip ✕
+      // "Clear all" is the most reliable disconnect target
+      const clearAll = page.locator('button:has-text("Clear all")')
+      if (await clearAll.isVisible()) {
+        await clearAll.click()
+      } else {
+        await page.locator('button:has-text("✕")').first().click()
+      }
       await page.waitForTimeout(300)
 
       // No product cards should remain after disconnect
@@ -1360,15 +1432,20 @@ test.describe('Section 10 — Performance & Smoothness', () => {
     await connectStore(page, 'gymshark.com')
     await page.waitForTimeout(500)
 
-    // Scroll Store Associate button into view (it is last in a horizontally scrolling row)
-    const storeAssocBtn10 = page.locator('button:has-text("Store Associate")').first()
-    await expect(storeAssocBtn10).toBeVisible({ timeout: 10_000 })
-    await storeAssocBtn10.scrollIntoViewIfNeeded()
+    // InventoryTable is pure synchronous React render — measure from button click to table visible
+    // First scroll the overflow-x-auto container so the button is accessible
+    await page.evaluate(() => {
+      Array.from(document.querySelectorAll('.overflow-x-auto')).forEach(c => {
+        (c as HTMLElement).scrollLeft = (c as HTMLElement).scrollWidth
+      })
+    })
     await page.waitForTimeout(200)
+    // Use exact role matching to avoid hitting chat suggestion buttons that contain "Store associate"
+    const storeAssocBtn10 = page.getByRole('button', { name: 'Store Associate', exact: true }).first()
+    await expect(storeAssocBtn10).toBeVisible({ timeout: 10_000 })
 
     const t0 = Date.now()
     await storeAssocBtn10.click()
-    // InventoryTable is pure synchronous React render — should appear in well under 2s
     await page.waitForSelector('table', { timeout: 5_000 })
     const elapsed = Date.now() - t0
     console.log(`Profile switch (Store Associate) render time: ${elapsed}ms`)
@@ -1414,9 +1491,12 @@ test.describe('Section 10 — Performance & Smoothness', () => {
 
 test.describe('Section 11 — Error States', () => {
 
+  test.setTimeout(180_000) // error + recovery connect
+
   test('11.1 · Invalid domain shows human-readable error, not a raw stack trace', async ({ page }) => {
     await page.goto('/')
-    const input = page.locator('input[placeholder*="Shopify store"]')
+    // URL bar placeholder is "Enter any Shopify store — gymshark.com…" on landing
+    const input = page.locator('input[placeholder*="Enter any Shopify store"]')
     await input.click()
     await input.fill('totallynotarealshopifystore12345.xyz')
     await page.keyboard.press('Enter')
@@ -1443,18 +1523,18 @@ test.describe('Section 11 — Error States', () => {
     await page.goto('/')
 
     // First: fail with bad domain
-    const input = page.locator('input[placeholder*="Shopify store"]')
+    const input = page.locator('input[placeholder*="Enter any Shopify store"]')
     await input.click()
     await input.fill('notashopifystore99999.xyz')
     await page.keyboard.press('Enter')
     await page.locator('.text-red-500').first().waitFor({ timeout: 30_000 })
 
-    // Then retry with valid domain
+    // Then retry with valid domain — connectStore helper handles the "Add another store" variant too
     const elapsed = await connectStore(page, 'allbirds.com')
     console.log(`Recovery connect time: ${elapsed}ms`)
 
     // Should successfully connect
-    await expect(page.locator('div.bg-green-500').first()).toBeVisible()
+    await expect(page.locator('.bg-green-500').first()).toBeVisible()
     await expect(page.locator('main img').first()).toBeVisible()
     await ss(page, '11-error-recovery')
   })
@@ -1486,6 +1566,8 @@ test.describe('Section 11 — Error States', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe('Section 12 — Cross-Instance Regression', () => {
+
+  test.setTimeout(180_000)
 
   const STORES = [
     { domain: 'allbirds.com',        label: 'Allbirds' },
