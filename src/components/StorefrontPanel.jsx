@@ -204,6 +204,79 @@ function ResizeHandle({ onMouseDown }) {
   )
 }
 
+// ── Drop Zone — defined OUTSIDE parent to prevent remount on every render ─────
+function DropZone({ position, children, className, style, dragOverPos, draggedPos, onDragOver, onDragEnter, onDragLeave, onDrop }) {
+  const isOver = dragOverPos === position && draggedPos && draggedPos !== position
+  return (
+    <div
+      className={`${className} relative transition-all ${isOver ? 'ring-2 ring-inset ring-zinc-400 rounded-xl bg-zinc-50/80' : ''}`}
+      style={style}
+      onDragOver={onDragOver}
+      onDragEnter={onDragEnter}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      {children}
+    </div>
+  )
+}
+
+// ── Module Card — defined OUTSIDE parent to prevent remount on every render ───
+function ModuleCard({ item, draggedPos, editingPos, onDragStart, onDragEnd, onEditToggle, onRemove, onSaveFilter, onCloseFilter }) {
+  const Component = MODULE_MAP[item.module]
+  if (!Component) return null
+  const label = moduleLabel(item.module, item.filter)
+  const pos = item.position
+  const isBeingDragged = draggedPos === pos
+  const isEditing = editingPos === pos
+
+  return (
+    <div className={`h-full flex flex-col transition-opacity duration-150 ${isBeingDragged ? 'opacity-40' : 'opacity-100'}`}>
+      {/* Drag handle + controls */}
+      <div
+        data-drag-handle={pos}
+        className="flex items-center justify-between px-3 py-2 border-b border-zinc-100 shrink-0 bg-white select-none cursor-grab active:cursor-grabbing"
+        draggable="true"
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+      >
+        <div className="flex items-center gap-2">
+          <div className="text-zinc-300 hover:text-zinc-500 px-0.5 text-base leading-none select-none">⠿</div>
+          <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{label}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onEditToggle}
+            className={`w-6 h-6 flex items-center justify-center rounded transition-all text-xs ${isEditing ? 'bg-zinc-900 text-white' : 'text-zinc-300 hover:text-zinc-600 hover:bg-zinc-100'}`}
+            title="Edit filters"
+          >⚙</button>
+          <button
+            onClick={onRemove}
+            className="w-6 h-6 flex items-center justify-center text-zinc-300 hover:text-zinc-600 hover:bg-zinc-100 rounded transition-all text-xs"
+            title="Remove"
+          >✕</button>
+        </div>
+      </div>
+
+      {/* Filter editor */}
+      {isEditing && (
+        <div className="relative z-20 shrink-0">
+          <FilterEditor
+            module={item.module}
+            filter={item.filter || {}}
+            onSave={onSaveFilter}
+            onClose={onCloseFilter}
+          />
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto">
+        <Component filter={item.filter || {}} />
+      </div>
+    </div>
+  )
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function StorefrontPanel({ layout = [], onLayoutChange }) {
   const [draggedPos, setDraggedPos] = useState(null)
@@ -238,34 +311,52 @@ export default function StorefrontPanel({ layout = [], onLayoutChange }) {
     document.addEventListener('mouseup', onUp)
   }, [leftWidth, rightWidth])
 
-  const handleDrop = (targetPos) => {
-    if (!draggedPos || draggedPos === targetPos || !onLayoutChange) return
+  const handleDrop = useCallback((targetPos, e) => {
+    // Read source position from dataTransfer — reliable even across re-renders
+    const sourcePos = e.dataTransfer.getData('text/plain') || draggedPos
+    if (!sourcePos || sourcePos === targetPos || !onLayoutChange) return
     const updated = layout.map(item => {
-      if (item.position === draggedPos) return { ...item, position: targetPos }
-      if (item.position === targetPos) return { ...item, position: draggedPos }
+      if (item.position === sourcePos) return { ...item, position: targetPos }
+      if (item.position === targetPos) return { ...item, position: sourcePos }
       return item
     })
     onLayoutChange(updated)
     setDraggedPos(null)
     setDragOverPos(null)
-  }
+  }, [layout, onLayoutChange, draggedPos])
 
-  const removeModule = (pos) => {
+  const makeDragHandlers = useCallback((pos) => ({
+    onDragStart: (e) => {
+      e.dataTransfer.effectAllowed = 'move'
+      e.dataTransfer.setData('text/plain', pos)
+      setDraggedPos(pos)
+    },
+    onDragEnd: () => { setDraggedPos(null); setDragOverPos(null) },
+  }), [])
+
+  const makeDropHandlers = useCallback((pos) => ({
+    onDragOver: (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverPos(pos) },
+    onDragEnter: (e) => { e.preventDefault(); setDragOverPos(pos) },
+    onDragLeave: (e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverPos(null) },
+    onDrop: (e) => { e.preventDefault(); handleDrop(pos, e) },
+  }), [handleDrop])
+
+  const removeModule = useCallback((pos) => {
     if (onLayoutChange) onLayoutChange(layout.filter(l => l.position !== pos))
     if (editingPos === pos) setEditingPos(null)
-  }
+  }, [layout, onLayoutChange, editingPos])
 
-  const addModule = (moduleName) => {
+  const addModule = useCallback((moduleName) => {
     if (!addingToPos || !onLayoutChange) return
     onLayoutChange([...layout.filter(l => l.position !== addingToPos), { position: addingToPos, module: moduleName, filter: {} }])
     setAddingToPos(null)
-  }
+  }, [layout, onLayoutChange, addingToPos])
 
-  const saveFilter = (pos, newFilter) => {
+  const saveFilter = useCallback((pos, newFilter) => {
     if (!onLayoutChange) return
     onLayoutChange(layout.map(l => l.position === pos ? { ...l, filter: newFilter } : l))
     setEditingPos(null)
-  }
+  }, [layout, onLayoutChange])
 
   if (layout.length === 0) {
     return (
@@ -289,95 +380,47 @@ export default function StorefrontPanel({ layout = [], onLayoutChange }) {
   const center = byPos('center')
   const right = byPos('right')
 
-  function DropZone({ position, children, className }) {
-    const isOver = dragOverPos === position && draggedPos && draggedPos !== position
-    return (
-      <div
-        className={`${className} relative transition-colors ${isOver ? 'bg-zinc-50 ring-2 ring-inset ring-zinc-300 rounded-xl' : ''}`}
-        onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverPos(position) }}
-        onDragEnter={e => { e.preventDefault(); setDragOverPos(position) }}
-        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverPos(null) }}
-        onDrop={e => { e.preventDefault(); handleDrop(position) }}
-      >
-        {children}
-      </div>
-    )
-  }
+  const renderModule = (item) => (
+    <ModuleCard
+      key={item.position}
+      item={item}
+      draggedPos={draggedPos}
+      editingPos={editingPos}
+      {...makeDragHandlers(item.position)}
+      onEditToggle={() => setEditingPos(editingPos === item.position ? null : item.position)}
+      onRemove={() => removeModule(item.position)}
+      onSaveFilter={(f) => saveFilter(item.position, f)}
+      onCloseFilter={() => setEditingPos(null)}
+    />
+  )
 
-  function ModuleCard({ item }) {
-    const Component = MODULE_MAP[item.module]
-    if (!Component) return null
-    const label = moduleLabel(item.module, item.filter)
-    const isEditing = editingPos === item.pos || editingPos === item.position
-    const pos = item.position
-
-    return (
-      <div className={`h-full flex flex-col transition-opacity ${draggedPos === pos ? 'opacity-30' : ''}`}>
-        {/* Header bar */}
-        <div
-          className="flex items-center justify-between px-3 py-2 border-b border-zinc-100 shrink-0 bg-white select-none"
-          draggable="true"
-          onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; setDraggedPos(pos) }}
-          onDragEnd={() => { setDraggedPos(null); setDragOverPos(null) }}
-        >
-          <div className="flex items-center gap-2">
-            <div className="text-zinc-300 hover:text-zinc-500 px-0.5 text-base leading-none select-none">⠿</div>
-            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{label}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            {/* Edit filter button */}
-            <button
-              onClick={() => setEditingPos(editingPos === pos ? null : pos)}
-              className={`w-6 h-6 flex items-center justify-center rounded transition-all text-xs ${editingPos === pos ? 'bg-zinc-900 text-white' : 'text-zinc-300 hover:text-zinc-600 hover:bg-zinc-100'}`}
-              title="Edit filters"
-            >⚙</button>
-            {/* Remove button */}
-            <button
-              onClick={() => removeModule(pos)}
-              className="w-6 h-6 flex items-center justify-center text-zinc-300 hover:text-zinc-600 hover:bg-zinc-100 rounded transition-all text-xs"
-              title="Remove"
-            >✕</button>
-          </div>
-        </div>
-
-        {/* Filter editor (drops down from header) */}
-        {editingPos === pos && (
-          <div className="relative z-20 shrink-0">
-            <FilterEditor
-              module={item.module}
-              filter={item.filter || {}}
-              onSave={newFilter => saveFilter(pos, newFilter)}
-              onClose={() => setEditingPos(null)}
-            />
-          </div>
-        )}
-
-        <div className="flex-1 overflow-y-auto">
-          <Component filter={item.filter || {}} />
-        </div>
-      </div>
-    )
-  }
+  const renderDropZone = (pos, item, className, style) => (
+    <DropZone
+      key={pos}
+      position={pos}
+      className={className}
+      style={style}
+      dragOverPos={dragOverPos}
+      draggedPos={draggedPos}
+      {...makeDropHandlers(pos)}
+    >
+      {item ? renderModule(item) : null}
+    </DropZone>
+  )
 
   return (
     <div className="flex flex-col h-full">
       {/* Top row */}
-      {top ? (
-        <DropZone position="top" className="border-b border-zinc-100 shrink-0 overflow-hidden">
-          <ModuleCard item={top} />
-        </DropZone>
-      ) : (
-        <AddZone position="top" onAdd={setAddingToPos} className="h-10 border-b border-zinc-100 shrink-0" />
-      )}
+      {top
+        ? renderDropZone('top', top, 'border-b border-zinc-100 shrink-0 overflow-hidden')
+        : <AddZone position="top" onAdd={setAddingToPos} className="h-10 border-b border-zinc-100 shrink-0" />}
 
       {/* Middle */}
       <div className="flex flex-1 min-h-0">
         {/* Left */}
         {left ? (
           <>
-            <DropZone position="left" className="shrink-0 border-r border-zinc-100 overflow-hidden flex flex-col" style={{ width: leftWidth }}>
-              <ModuleCard item={left} />
-            </DropZone>
+            {renderDropZone('left', left, 'shrink-0 border-r border-zinc-100 overflow-hidden flex flex-col', { width: leftWidth })}
             <ResizeHandle onMouseDown={e => startResize(e, 'left')} />
           </>
         ) : (
@@ -385,21 +428,15 @@ export default function StorefrontPanel({ layout = [], onLayoutChange }) {
         )}
 
         {/* Center */}
-        {center ? (
-          <DropZone position="center" className="flex-1 overflow-hidden flex flex-col min-w-0">
-            <ModuleCard item={center} />
-          </DropZone>
-        ) : (
-          <AddZone position="center" onAdd={setAddingToPos} className="flex-1" />
-        )}
+        {center
+          ? renderDropZone('center', center, 'flex-1 overflow-hidden flex flex-col min-w-0')
+          : <AddZone position="center" onAdd={setAddingToPos} className="flex-1" />}
 
         {/* Right */}
         {right ? (
           <>
             <ResizeHandle onMouseDown={e => startResize(e, 'right')} />
-            <DropZone position="right" className="shrink-0 border-l border-zinc-100 overflow-hidden flex flex-col" style={{ width: rightWidth }}>
-              <ModuleCard item={right} />
-            </DropZone>
+            {renderDropZone('right', right, 'shrink-0 border-l border-zinc-100 overflow-hidden flex flex-col', { width: rightWidth })}
           </>
         ) : (
           <AddZone position="right" onAdd={setAddingToPos} className="w-12 border-l border-zinc-100 shrink-0" />
@@ -407,13 +444,9 @@ export default function StorefrontPanel({ layout = [], onLayoutChange }) {
       </div>
 
       {/* Bottom row */}
-      {bottom ? (
-        <DropZone position="bottom" className="border-t border-zinc-100 shrink-0 overflow-hidden">
-          <ModuleCard item={bottom} />
-        </DropZone>
-      ) : (
-        <AddZone position="bottom" onAdd={setAddingToPos} className="h-10 border-t border-zinc-100 shrink-0" />
-      )}
+      {bottom
+        ? renderDropZone('bottom', bottom, 'border-t border-zinc-100 shrink-0 overflow-hidden')
+        : <AddZone position="bottom" onAdd={setAddingToPos} className="h-10 border-t border-zinc-100 shrink-0" />}
 
       {/* Module picker modal */}
       {addingToPos && (
